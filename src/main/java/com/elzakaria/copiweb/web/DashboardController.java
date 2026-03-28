@@ -1,9 +1,11 @@
 package com.elzakaria.copiweb.web;
 
 import com.elzakaria.copiweb.dto.CreateSessionRequest;
+import com.elzakaria.copiweb.model.AgentProfile;
 import com.elzakaria.copiweb.model.SessionStatus;
 import com.elzakaria.copiweb.repository.AgentEventRepository;
 import com.elzakaria.copiweb.repository.AgentSessionRepository;
+import com.elzakaria.copiweb.service.AgentProfileService;
 import com.elzakaria.copiweb.service.AgentSessionService;
 import com.elzakaria.copiweb.service.ModelService;
 import jakarta.validation.Valid;
@@ -27,6 +29,7 @@ public class DashboardController {
     private final AgentSessionRepository sessionRepo;
     private final AgentEventRepository eventRepo;
     private final ModelService modelService;
+    private final AgentProfileService agentProfileService;
 
     @GetMapping("/")
     public String index() {
@@ -59,9 +62,25 @@ public class DashboardController {
     }
 
     @GetMapping("/sessions/new")
-    public String newSession(Model model) {
+    public String newSession(@RequestParam(required = false) Long profileId, Model model) {
         model.addAttribute("models", modelService.getModels());
-        model.addAttribute("createRequest", new CreateSessionRequest("", "gpt-4.1", "", "", true));
+        model.addAttribute("profiles", agentProfileService.listProfiles());
+
+        String systemPrompt = "";
+        String selectedModel = "gpt-4.1";
+        Long selectedProfileId = null;
+
+        if (profileId != null) {
+            try {
+                AgentProfile profile = agentProfileService.getProfile(profileId);
+                systemPrompt = profile.getSystemPrompt() != null ? profile.getSystemPrompt() : "";
+                selectedModel = profile.getModel();
+                selectedProfileId = profile.getId();
+            } catch (Exception ignored) { }
+        }
+
+        model.addAttribute("createRequest", new CreateSessionRequest("", selectedModel, systemPrompt, "", true));
+        model.addAttribute("selectedProfileId", selectedProfileId);
         return "sessions/new";
     }
 

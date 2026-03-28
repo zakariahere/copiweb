@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head><title>Agent Catalog</title></head>
+<body>
+<section>
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-people me-2"></i>Agent Catalog</h2>
+            <p class="text-secondary mb-0 small">Pick a domain-specialized agent or create your own.</p>
+        </div>
+        <a th:href="@{/sessions/new}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>New Session
+        </a>
+    </div>
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6 col-xl-4" th:each="agent : ${agents}">
+            <div class="card h-100 border-0 agent-card"
+                 th:classappend="'border-start border-4 border-' + ${agent.color}">
+                <div class="card-body d-flex flex-column gap-2 p-4" style="background: rgba(255,255,255,0.04); border-radius: 0.375rem;">
+                    <div class="d-flex align-items-start justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fs-4" th:classappend="'text-' + ${agent.color}">
+                                <i th:classappend="${agent.icon}"></i>
+                            </span>
+                            <div>
+                                <h5 class="mb-0 fw-semibold" th:text="${agent.name}">Agent</h5>
+                                <small class="text-secondary font-monospace" th:text="${agent.model}">model</small>
+                            </div>
+                        </div>
+                        <span class="badge bg-dark border border-secondary small" th:if="${agent.builtIn}">built-in</span>
+                    </div>
+
+                    <p class="text-secondary small mb-0 flex-grow-1" th:text="${agent.description}">description</p>
+
+                    <div class="d-flex gap-2 mt-1">
+                        <a th:href="@{/sessions/new(profileId=${agent.id})}"
+                           class="btn btn-sm flex-grow-1"
+                           th:classappend="'btn-outline-' + ${agent.color}">
+                            <i class="bi bi-play-circle me-1"></i>Launch Session
+                        </a>
+                        <form th:if="${!agent.builtIn}"
+                              th:action="@{/agents/{id}/delete(id=${agent.id})}"
+                              method="post" class="d-inline"
+                              onsubmit="return confirm('Delete this agent profile?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Custom Agent card -->
+        <div class="col-md-6 col-xl-4">
+            <div class="card h-100 border-secondary border-dashed" style="background: rgba(255,255,255,0.02); border-style: dashed !important; border-radius: 0.375rem; border: 1px dashed #6c757d;">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center gap-3 p-4 text-center">
+                    <i class="bi bi-plus-circle fs-2 text-secondary"></i>
+                    <div>
+                        <h6 class="fw-semibold mb-1">Custom Agent</h6>
+                        <p class="text-secondary small mb-0">Define a new agent profile with a custom system prompt and model.</p>
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#newAgentModal">
+                        Create Agent
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Agent Modal -->
+    <div class="modal fade" id="newAgentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create Custom Agent</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="new-agent-form">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control bg-black text-light border-secondary"
+                                       id="agentName" placeholder="My Custom Agent" required/>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Color</label>
+                                <select class="form-select bg-black text-light border-secondary" id="agentColor">
+                                    <option value="primary">Blue (primary)</option>
+                                    <option value="success">Green (success)</option>
+                                    <option value="warning">Yellow (warning)</option>
+                                    <option value="danger">Red (danger)</option>
+                                    <option value="info">Cyan (info)</option>
+                                    <option value="secondary" selected>Grey (secondary)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Icon</label>
+                                <input type="text" class="form-control bg-black text-light border-secondary font-monospace"
+                                       id="agentIcon" value="bi-robot" placeholder="bi-robot"/>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Description</label>
+                                <input type="text" class="form-control bg-black text-light border-secondary"
+                                       id="agentDescription" placeholder="What this agent specialises in"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Default Model</label>
+                                <input type="text" class="form-control bg-black text-light border-secondary font-monospace"
+                                       id="agentModel" value="gpt-4.1"/>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">System Prompt</label>
+                                <textarea class="form-control bg-black text-light border-secondary font-monospace"
+                                          id="agentSystemPrompt" rows="5"
+                                          placeholder="You are an expert in..."></textarea>
+                            </div>
+                        </div>
+                        <div id="agent-modal-error" class="alert alert-danger mt-3" style="display:none;"></div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Create Agent
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('new-agent-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = document.getElementById('agent-modal-error');
+        err.style.display = 'none';
+        const body = {
+            name: document.getElementById('agentName').value.trim(),
+            description: document.getElementById('agentDescription').value.trim(),
+            color: document.getElementById('agentColor').value,
+            icon: document.getElementById('agentIcon').value.trim(),
+            model: document.getElementById('agentModel').value.trim(),
+            systemPrompt: document.getElementById('agentSystemPrompt').value.trim(),
+        };
+        try {
+            const res = await fetch('/api/agents', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error('Failed to create agent');
+            window.location.reload();
+        } catch (ex) {
+            err.textContent = ex.message;
+            err.style.display = '';
+        }
+    });
+    </script>
+</section>
+</body>
+</html>
