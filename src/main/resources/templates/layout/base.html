@@ -4,16 +4,25 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title th:text="${title} + ' — CoPiWeb'">CoPiWeb</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
     <link rel="stylesheet" th:href="@{/css/app.css}"/>
 </head>
 <body class="bg-dark text-light">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-black border-bottom border-secondary">
+<div class="app-shell-glow"></div>
+
+<nav class="navbar navbar-expand-lg navbar-dark app-navbar">
     <div class="container-fluid">
-        <a class="navbar-brand fw-bold text-primary" th:href="@{/dashboard}">
-            <i class="bi bi-robot me-2"></i>CoPiWeb
+        <a class="navbar-brand fw-bold text-primary d-flex align-items-center gap-2" th:href="@{/dashboard}">
+            <span class="app-brand-mark">
+                <i class="bi bi-robot"></i>
+            </span>
+            <span>
+                <span class="d-block">CoPiWeb</span>
+                <small class="d-block text-secondary fw-normal app-brand-subtitle">GitHub Copilot mission control</small>
+            </span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
@@ -46,19 +55,31 @@
                     </a>
                 </li>
             </ul>
-            <span class="navbar-text text-secondary small">
-                <i class="bi bi-circle-fill text-success me-1" style="font-size:0.5rem;"></i>Copilot SDK v0.2.1
-            </span>
+            <div class="d-flex flex-wrap align-items-center gap-2 app-navbar-status">
+                <span class="app-status-pill">
+                    <i class="bi bi-broadcast-pin"></i>
+                    <span>Live mission feed</span>
+                </span>
+                <span class="app-status-pill">
+                    <i class="bi bi-circle-fill text-success" style="font-size:0.5rem;"></i>
+                    <span>Copilot SDK v0.2.1</span>
+                </span>
+            </div>
         </div>
     </div>
 </nav>
 
-<main class="container-fluid py-4">
+<main class="container-fluid py-4 app-main-shell">
     <div th:replace="${content}"></div>
 </main>
 
-<footer class="border-top border-secondary text-center text-secondary small py-3">
-    CoPiWeb &mdash; GitHub Copilot SDK Agent Dashboard
+<footer class="app-footer text-secondary small py-3">
+    <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span>CoPiWeb &mdash; cinematic control surface for Copilot SDK agents</span>
+        <span class="app-footer-pulse">
+            <i class="bi bi-stars me-1"></i>Built for live sessions, tools, and event replay
+        </span>
+    </div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

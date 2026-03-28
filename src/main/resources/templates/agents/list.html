@@ -4,14 +4,39 @@
 <head><title>Agent Catalog</title></head>
 <body>
 <section>
-    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-        <div>
-            <h2 class="mb-1"><i class="bi bi-people me-2"></i>Agent Catalog</h2>
-            <p class="text-secondary mb-0 small">Pick a domain-specialized agent or create your own.</p>
+    <div class="page-hero card border-0 mb-4">
+        <div class="card-body page-hero-body p-4 p-xl-5">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-4">
+                <div>
+                    <p class="page-kicker mb-2">
+                        <i class="bi bi-people"></i>Agent Catalog
+                    </p>
+                    <h1 class="display-6 fw-semibold mb-3">Curated specialists for every kind of mission.</h1>
+                    <p class="page-subtitle mb-4">
+                        Start with a built-in expert or define your own agent profile with a distinct model, prompt, and personality.
+                    </p>
+                    <div class="page-stat-strip">
+                        <span class="page-stat-chip">
+                            <i class="bi bi-robot"></i>
+                            <span th:text="${agents.size()} + ' profiles available'">0 profiles available</span>
+                        </span>
+                        <span class="page-stat-chip">
+                            <i class="bi bi-patch-check"></i>
+                            <span th:text="${agents.?[builtIn].size()} + ' built-in experts'">0 built-in experts</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a th:href="@{/sessions/new}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-plus-circle me-1"></i>Launch Session
+                    </a>
+                    <button class="btn btn-outline-light btn-lg" data-bs-toggle="modal" data-bs-target="#newAgentModal">
+                        <i class="bi bi-magic me-1"></i>Create Custom Agent
+                    </button>
+                </div>
+            </div>
         </div>
-        <a th:href="@{/sessions/new}" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-1"></i>New Session
-        </a>
     </div>
 
     <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
@@ -25,9 +50,9 @@
 
     <div class="row g-3">
         <div class="col-md-6 col-xl-4" th:each="agent : ${agents}">
-            <div class="card h-100 border-0 agent-card"
-                 th:classappend="'border-start border-4 border-' + ${agent.color}">
-                <div class="card-body d-flex flex-column gap-2 p-4" style="background: rgba(255,255,255,0.04); border-radius: 0.375rem;">
+            <div class="catalog-card h-100 p-4"
+                 th:classappend="' border-' + ${agent.color}">
+                <div class="d-flex flex-column gap-3 h-100">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="d-flex align-items-center gap-2">
                             <span class="fs-4" th:classappend="'text-' + ${agent.color}">
@@ -35,13 +60,24 @@
                             </span>
                             <div>
                                 <h5 class="mb-0 fw-semibold" th:text="${agent.name}">Agent</h5>
-                                <small class="text-secondary font-monospace" th:text="${agent.model}">model</small>
+                                <small class="text-secondary font-monospace d-block" th:text="${agent.model}">model</small>
                             </div>
                         </div>
                         <span class="badge bg-dark border border-secondary small" th:if="${agent.builtIn}">built-in</span>
                     </div>
 
                     <p class="text-secondary small mb-0 flex-grow-1" th:text="${agent.description}">description</p>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="dashboard-chip">
+                            <i class="bi bi-cpu"></i>
+                            <span th:text="${agent.model}">model</span>
+                        </span>
+                        <span class="dashboard-chip" th:classappend="' text-' + ${agent.color}">
+                            <i th:classappend="${agent.icon}"></i>
+                            <span th:text="${agent.builtIn} ? 'Curated' : 'Custom'">Curated</span>
+                        </span>
+                    </div>
 
                     <div class="d-flex gap-2 mt-1">
                         <a th:href="@{/sessions/new(profileId=${agent.id})}"
@@ -64,8 +100,7 @@
 
         <!-- Add Custom Agent card -->
         <div class="col-md-6 col-xl-4">
-            <div class="card h-100 border-secondary border-dashed" style="background: rgba(255,255,255,0.02); border-style: dashed !important; border-radius: 0.375rem; border: 1px dashed #6c757d;">
-                <div class="card-body d-flex flex-column align-items-center justify-content-center gap-3 p-4 text-center">
+            <div class="catalog-card h-100 p-4 d-flex flex-column align-items-center justify-content-center gap-3 text-center border-secondary" style="border-style: dashed;">
                     <i class="bi bi-plus-circle fs-2 text-secondary"></i>
                     <div>
                         <h6 class="fw-semibold mb-1">Custom Agent</h6>
@@ -74,7 +109,6 @@
                     <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#newAgentModal">
                         Create Agent
                     </button>
-                </div>
             </div>
         </div>
     </div>

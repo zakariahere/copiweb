@@ -45,6 +45,7 @@ public class DashboardController {
         long errorsToday = sessionRepo.countByStatus(SessionStatus.ERROR);
         var recentActivity = eventRepo.findRecentEventsAcrossAllSessions(LocalDateTime.now().minusHours(24));
         var recentSessions = sessionRepo.findTop10ByOrderByLastActiveAtDesc();
+        var spotlightSession = recentSessions.isEmpty() ? null : recentSessions.getFirst();
 
         model.addAttribute("activeSessions", activeSessions);
         model.addAttribute("totalSessions", totalSessions);
@@ -52,6 +53,7 @@ public class DashboardController {
         model.addAttribute("errorsToday", errorsToday);
         model.addAttribute("recentActivity", recentActivity);
         model.addAttribute("recentSessions", recentSessions);
+        model.addAttribute("spotlightSession", spotlightSession);
         return "dashboard";
     }
 

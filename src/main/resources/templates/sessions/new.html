@@ -5,33 +5,39 @@
 <body>
 <section>
     <div class="row justify-content-center">
-        <div class="col-md-10 col-lg-8">
-            <div class="d-flex align-items-center mb-4">
-                <a th:href="@{/sessions}" class="btn btn-outline-secondary btn-sm me-3">
-                    <i class="bi bi-arrow-left"></i>
-                </a>
-                <h2 class="mb-0"><i class="bi bi-plus-circle me-2"></i>New Session</h2>
-            </div>
+        <div class="col-xl-10">
+            <div class="page-hero card border-0 mb-4">
+                <div class="card-body page-hero-body p-4 p-xl-5">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-4">
+                        <div>
+                            <p class="page-kicker mb-2">
+                                <i class="bi bi-play-circle"></i>Session Composer
+                            </p>
+                            <h1 class="display-6 fw-semibold mb-3">Launch a new Copilot mission.</h1>
+                            <p class="page-subtitle mb-4">
+                                Pick an agent, choose a model, shape the context, and decide whether the experience should stream live from the first token.
+                            </p>
+                            <div class="page-stat-strip">
+                                <span class="page-stat-chip">
+                                    <i class="bi bi-people"></i>
+                                    <span th:text="${profiles.size()} + ' agents available'">0 agents available</span>
+                                </span>
+                                <span class="page-stat-chip">
+                                    <i class="bi bi-cpu"></i>
+                                    <span th:text="${models.size()} + ' models detected'">0 models detected</span>
+                                </span>
+                            </div>
+                        </div>
 
-            <!-- Agent Picker -->
-            <div class="mb-4">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h6 class="mb-0 fw-semibold text-secondary">
-                        <i class="bi bi-people me-1"></i>Pick an Agent
-                        <span class="fw-normal">(optional — pre-fills system prompt)</span>
-                    </h6>
-                    <a th:href="@{/agents}" class="text-secondary small">Manage agents</a>
-                </div>
-                <div class="d-flex flex-wrap gap-2" id="agent-picker">
-                    <button type="button"
-                            class="btn btn-sm agent-pick-btn"
-                            th:each="agent : ${profiles}"
-                            th:attr="data-profile-id=${agent.id},data-model=${agent.model},data-system-prompt=${agent.systemPrompt}"
-                            th:classappend="${agent.id == selectedProfileId} ? ('btn-' + ${agent.color}) : ('btn-outline-' + ${agent.color})"
-                            th:id="'agent-btn-' + ${agent.id}">
-                        <i th:classappend="${agent.icon} + ' me-1'"></i>
-                        <span th:text="${agent.name}">Agent</span>
-                    </button>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a th:href="@{/sessions}" class="btn btn-outline-light btn-lg">
+                                <i class="bi bi-arrow-left me-1"></i>Back to Fleet
+                            </a>
+                            <a th:href="@{/agents}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-people me-1"></i>Manage Agents
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -39,73 +45,125 @@
                 <i class="bi bi-exclamation-triangle me-2"></i><span th:text="${error}"></span>
             </div>
 
-            <div class="card bg-secondary bg-opacity-10 border-secondary">
-                <div class="card-body p-4">
-                    <form th:action="@{/sessions}" method="post" th:object="${createRequest}">
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-4">
+                    <div class="panel-surface p-4 mb-4">
+                        <p class="page-kicker mb-2">
+                            <i class="bi bi-people"></i>Agent Picker
+                        </p>
+                        <h4 class="mb-2">Start with a personality</h4>
+                        <p class="text-secondary small mb-4">
+                            Selecting an agent pre-fills the system prompt and default model so you can launch faster.
+                        </p>
 
-                        <div class="mb-3">
-                            <label for="name" class="form-label fw-semibold">Session Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control bg-dark text-light border-secondary"
-                                   id="name" th:field="*{name}" placeholder="e.g. Batch Job Forensics"
-                                   th:classappend="${#fields.hasErrors('name')} ? 'is-invalid' : ''"/>
-                            <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="model" class="form-label fw-semibold">Model <span class="text-danger">*</span></label>
-                            <select class="form-select bg-dark text-light border-secondary" id="model" th:field="*{model}">
-                                <option th:each="m : ${models}"
-                                        th:value="${m.id}"
-                                        th:text="${m.name} + ' (' + ${m.id} + ')'"
-                                        th:selected="${m.id == 'gpt-4.1'}">Model</option>
-                                <option th:if="${models.empty}" value="gpt-4.1">gpt-4.1 (default)</option>
-                                <option th:if="${models.empty}" value="claude-sonnet-4">claude-sonnet-4</option>
-                                <option th:if="${models.empty}" value="o3-mini">o3-mini</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="workingDirectory" class="form-label fw-semibold">
-                                Working Directory
-                                <span class="text-secondary fw-normal">(optional)</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-dark border-secondary text-secondary">
-                                    <i class="bi bi-folder2-open"></i>
-                                </span>
-                                <input type="text" class="form-control bg-dark text-light border-secondary font-monospace"
-                                       id="workingDirectory" th:field="*{workingDirectory}"
-                                       placeholder="/path/to/your/project"/>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="systemPrompt" class="form-label fw-semibold">System Prompt
-                                <span class="text-secondary fw-normal">(optional — pre-filled by agent picker above)</span>
-                            </label>
-                            <textarea class="form-control bg-dark text-light border-secondary font-monospace"
-                                      id="systemPrompt" th:field="*{systemPrompt}"
-                                      rows="5" placeholder="Additional instructions appended to the default system prompt..."></textarea>
-                        </div>
-
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="streaming"
-                                       th:field="*{streaming}" role="switch"/>
-                                <label class="form-check-label fw-semibold" for="streaming">
-                                    Enable Streaming
-                                    <small class="text-secondary fw-normal ms-1">— receive response chunks in real time</small>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-play-circle me-1"></i>Create Session
+                        <div class="d-flex flex-column gap-2" id="agent-picker">
+                            <button type="button"
+                                    class="btn btn-sm text-start agent-pick-btn"
+                                    th:each="agent : ${profiles}"
+                                    th:attr="data-profile-id=${agent.id},data-model=${agent.model},data-system-prompt=${agent.systemPrompt}"
+                                    th:classappend="${agent.id == selectedProfileId} ? ('btn-' + ${agent.color}) : ('btn-outline-' + ${agent.color})"
+                                    th:id="'agent-btn-' + ${agent.id}">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <span class="d-flex align-items-center gap-2">
+                                        <i th:classappend="${agent.icon}"></i>
+                                        <span th:text="${agent.name}">Agent</span>
+                                    </span>
+                                    <small class="font-monospace opacity-75" th:text="${agent.model}">model</small>
+                                </div>
                             </button>
-                            <a th:href="@{/sessions}" class="btn btn-outline-secondary">Cancel</a>
                         </div>
-                    </form>
+
+                        <a th:href="@{/agents}" class="btn btn-outline-secondary w-100 mt-3">
+                            <i class="bi bi-sliders me-1"></i>Manage Agent Profiles
+                        </a>
+                    </div>
+
+                    <div class="panel-surface-soft p-4">
+                        <p class="page-kicker mb-2">
+                            <i class="bi bi-lightning"></i>Launch Notes
+                        </p>
+                        <ul class="text-secondary small mb-0 ps-3">
+                            <li class="mb-2">Use a strong session name so runs are easy to find later.</li>
+                            <li class="mb-2">Set a working directory when you want repository-aware actions.</li>
+                            <li>Enable streaming when you want the live, token-by-token experience.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="composer-form-card">
+                        <div class="card-body p-4 p-xl-5">
+                            <form th:action="@{/sessions}" method="post" th:object="${createRequest}">
+
+                                <div class="mb-4">
+                                    <label for="name" class="form-label fw-semibold">Session Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control bg-dark text-light border-secondary"
+                                           id="name" th:field="*{name}" placeholder="e.g. Batch Job Forensics"
+                                           th:classappend="${#fields.hasErrors('name')} ? 'is-invalid' : ''"/>
+                                    <div class="form-text text-secondary">Give this run a memorable name so it is easy to reopen from the fleet.</div>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                                </div>
+
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <label for="model" class="form-label fw-semibold">Model <span class="text-danger">*</span></label>
+                                        <select class="form-select bg-dark text-light border-secondary" id="model" th:field="*{model}">
+                                            <option th:each="m : ${models}"
+                                                    th:value="${m.id}"
+                                                    th:text="${m.name} + ' (' + ${m.id} + ')'"
+                                                    th:selected="${m.id == 'gpt-4.1'}">Model</option>
+                                            <option th:if="${models.empty}" value="gpt-4.1">gpt-4.1 (default)</option>
+                                            <option th:if="${models.empty}" value="claude-sonnet-4">claude-sonnet-4</option>
+                                            <option th:if="${models.empty}" value="o3-mini">o3-mini</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="workingDirectory" class="form-label fw-semibold">
+                                            Working Directory
+                                            <span class="text-secondary fw-normal">(optional)</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-dark border-secondary text-secondary">
+                                                <i class="bi bi-folder2-open"></i>
+                                            </span>
+                                            <input type="text" class="form-control bg-dark text-light border-secondary font-monospace"
+                                                   id="workingDirectory" th:field="*{workingDirectory}"
+                                                   placeholder="C:\workspace\my-project"/>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="my-4">
+                                    <label for="systemPrompt" class="form-label fw-semibold">System Prompt
+                                        <span class="text-secondary fw-normal">(optional — pre-filled by agent picker)</span>
+                                    </label>
+                                    <textarea class="form-control bg-dark text-light border-secondary font-monospace"
+                                              id="systemPrompt" th:field="*{systemPrompt}"
+                                              rows="7" placeholder="Additional instructions appended to the default system prompt..."></textarea>
+                                    <div class="form-text text-secondary">Use this to bias the assistant toward a task, domain, or execution style.</div>
+                                </div>
+
+                                <div class="panel-surface-soft p-4 mb-4">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="streaming"
+                                               th:field="*{streaming}" role="switch"/>
+                                        <label class="form-check-label fw-semibold" for="streaming">
+                                            Enable Streaming
+                                            <small class="text-secondary fw-normal ms-1 d-block">Receive response chunks in real time and watch the session wake up token by token.</small>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-play-circle me-1"></i>Create Session
+                                    </button>
+                                    <a th:href="@{/sessions}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -4,75 +4,120 @@
 <head><title>Sessions</title></head>
 <body>
 <section>
-    <div class="d-flex align-items-center mb-4">
-        <h2 class="mb-0 me-3"><i class="bi bi-collection me-2"></i>Sessions</h2>
-        <a th:href="@{/sessions/new}" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-circle me-1"></i>New Session
-        </a>
+    <div class="page-hero card border-0 mb-4">
+        <div class="card-body page-hero-body p-4 p-xl-5">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-4">
+                <div>
+                    <p class="page-kicker mb-2">
+                        <i class="bi bi-diagram-3"></i>Fleet View
+                    </p>
+                    <h1 class="display-6 fw-semibold mb-3">Every session in the fleet, at a glance.</h1>
+                    <p class="page-subtitle mb-4">
+                        Track live status, jump into active conversations, and reopen historical runs from one premium control surface.
+                    </p>
+                    <div class="page-stat-strip">
+                        <span class="page-stat-chip">
+                            <i class="bi bi-collection"></i>
+                            <span th:text="${sessions.size()} + ' sessions loaded'">0 sessions loaded</span>
+                        </span>
+                        <span class="page-stat-chip">
+                            <i class="bi bi-activity"></i>
+                            <span th:text="${sessions.?[status.name() == 'ACTIVE' or status.name() == 'IDLE'].size()} + ' live now'">0 live now</span>
+                        </span>
+                        <span class="page-stat-chip">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span th:text="${sessions.?[status.name() == 'ERROR'].size()} + ' need attention'">0 need attention</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a th:href="@{/sessions/new}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-plus-circle me-1"></i>Launch Session
+                    </a>
+                    <a th:href="@{/dashboard}" class="btn btn-outline-light btn-lg">
+                        <i class="bi bi-speedometer2 me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show">
-        <span th:text="${successMessage}"></span>
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <span th:text="${success}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <div th:if="${sessions.empty}" class="text-center text-secondary py-5">
-        <i class="bi bi-collection fs-1 d-block mb-3"></i>
-        <p>No sessions yet.</p>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${sessions.empty}" class="dashboard-empty-state text-center text-secondary py-5 px-4">
+        <i class="bi bi-collection-play fs-1 d-block mb-3"></i>
+        <h4 class="text-light mb-2">No sessions in the fleet yet.</h4>
+        <p class="mb-3">Create your first session to start streaming activity into CoPiWeb.</p>
         <a th:href="@{/sessions/new}" class="btn btn-primary">Create your first session</a>
     </div>
 
-    <div th:unless="${sessions.empty}" class="card bg-secondary bg-opacity-10 border-secondary">
-        <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Name</th>
-                        <th>Model</th>
-                        <th>Status</th>
-                        <th class="text-center">Turns</th>
-                        <th>Created</th>
-                        <th>Last Active</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="s : ${sessions}">
-                        <td>
-                            <a th:href="@{/sessions/{id}(id=${s.id})}" class="text-decoration-none fw-semibold"
-                               th:text="${s.name}">Session Name</a>
-                        </td>
-                        <td><span class="badge bg-dark border border-secondary" th:text="${s.model}">model</span></td>
-                        <td>
-                            <span class="badge"
-                                  th:classappend="${s.status.name() == 'ACTIVE'} ? 'bg-success' :
-                                                  (${s.status.name() == 'IDLE'} ? 'bg-primary' :
-                                                  (${s.status.name() == 'ERROR'} ? 'bg-danger' :
-                                                  (${s.status.name() == 'CREATING'} ? 'bg-warning text-dark' : 'bg-secondary')))"
-                                  th:text="${s.status}">STATUS</span>
-                        </td>
-                        <td class="text-center" th:text="${s.turnCount}">0</td>
-                        <td class="small text-secondary"
-                            th:text="${s.createdAt != null} ? ${#temporals.format(s.createdAt, 'yyyy-MM-dd HH:mm')} : '—'">—</td>
-                        <td class="small text-secondary"
-                            th:text="${s.lastActiveAt != null} ? ${#temporals.format(s.lastActiveAt, 'yyyy-MM-dd HH:mm')} : '—'">—</td>
-                        <td class="text-end">
-                            <a th:href="@{/sessions/{id}(id=${s.id})}" class="btn btn-outline-primary btn-sm me-1">
-                                <i class="bi bi-chat-dots"></i>
-                            </a>
-                            <a th:href="@{/sessions/{id}/history(id=${s.id})}" class="btn btn-outline-secondary btn-sm me-1">
-                                <i class="bi bi-clock-history"></i>
-                            </a>
-                            <form th:action="@{/sessions/{id}/delete(id=${s.id})}" method="post" class="d-inline"
-                                  onsubmit="return confirm('Delete this session?')">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+    <div th:unless="${sessions.empty}" class="d-flex flex-column gap-3">
+        <div th:each="s : ${sessions}" class="fleet-card p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+                <div>
+                    <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                        <span class="signal-marker"
+                              th:classappend="${s.status.name() == 'ACTIVE'} ? 'signal-assistant' :
+                                              (${s.status.name() == 'IDLE'} ? 'signal-user' :
+                                              (${s.status.name() == 'ERROR'} ? 'signal-error' :
+                                              (${s.status.name() == 'CREATING'} ? 'signal-tool' : 'signal-system')))"></span>
+                        <h3 class="h4 mb-0" th:text="${s.name}">Session Name</h3>
+                        <span class="badge"
+                              th:classappend="${s.status.name() == 'ACTIVE'} ? 'bg-success' :
+                                              (${s.status.name() == 'IDLE'} ? 'bg-primary' :
+                                              (${s.status.name() == 'ERROR'} ? 'bg-danger' :
+                                              (${s.status.name() == 'CREATING'} ? 'bg-warning text-dark' : 'bg-secondary')))"
+                              th:text="${s.status}">STATUS</span>
+                    </div>
+                    <p class="text-secondary mb-0">
+                        Session configured with <span class="text-light fw-semibold" th:text="${s.model}">model</span>
+                        and ready for live interaction or replay.
+                    </p>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a th:href="@{/sessions/{id}(id=${s.id})}" class="btn btn-primary">
+                        <i class="bi bi-chat-dots me-1"></i>Open Live View
+                    </a>
+                    <a th:href="@{/sessions/{id}/history(id=${s.id})}" class="btn btn-outline-secondary">
+                        <i class="bi bi-clock-history me-1"></i>History
+                    </a>
+                    <form th:action="@{/sessions/{id}/delete(id=${s.id})}" method="post" class="d-inline"
+                          onsubmit="return confirm('Delete this session?')">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="fleet-meta-grid">
+                <div class="fleet-meta-cell">
+                    <label>Model</label>
+                    <strong th:text="${s.model}">model</strong>
+                </div>
+                <div class="fleet-meta-cell">
+                    <label>Turns</label>
+                    <strong th:text="${s.turnCount}">0</strong>
+                </div>
+                <div class="fleet-meta-cell">
+                    <label>Created</label>
+                    <strong th:text="${s.createdAt != null ? #temporals.format(s.createdAt, 'yyyy-MM-dd HH:mm') : '—'}">—</strong>
+                </div>
+                <div class="fleet-meta-cell">
+                    <label>Last Active</label>
+                    <strong th:text="${s.lastActiveAt != null ? #temporals.format(s.lastActiveAt, 'yyyy-MM-dd HH:mm') : 'No activity yet'}">—</strong>
+                </div>
+            </div>
         </div>
     </div>
 </section>

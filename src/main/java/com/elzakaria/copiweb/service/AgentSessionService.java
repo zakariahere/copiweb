@@ -143,19 +143,20 @@ public class AgentSessionService {
         var dbSession = sessionRepo.findById(dbId)
             .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
 
-        registry.findByDbSessionId(dbId).ifPresent(handle -> {
-            try {
-                copilotClient.deleteSession(handle.sdkSessionId()).get();
-            } catch (Exception e) {
-                log.warn("SDK delete failed for session {}: {}", dbId, e.getMessage());
-            }
-            registry.remove(handle.sdkSessionId());
-            sseService.removeAll(handle.sdkSessionId());
-        });
+        String sdkSessionId = dbSession.getSessionId();
 
-        dbSession.setStatus(SessionStatus.CLOSED);
-        sessionRepo.save(dbSession);
-        log.info("Deleted session dbId={}", dbId);
+        try {
+            copilotClient.deleteSession(sdkSessionId).get();
+        } catch (Exception e) {
+            log.warn("SDK delete failed for session {} (sdkId={}): {}", dbId, sdkSessionId, e.getMessage());
+        }
+
+        registry.remove(sdkSessionId);
+        sseService.removeAll(sdkSessionId);
+
+        sessionRepo.delete(dbSession);
+        sessionRepo.flush();
+        log.info("Deleted session dbId={} sdkId={}", dbId, sdkSessionId);
     }
 
     public List<AgentSession> listSessions() {
