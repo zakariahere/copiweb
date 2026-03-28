@@ -40,11 +40,6 @@ public class WorkflowCommand {
     @Column(name = "param_schema", columnDefinition = "TEXT")
     private String paramSchema;
 
-    // Recommended agent for this command (nullable = any agent is fine)
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "agent_profile_id")
-    private AgentProfile agentProfile;
-
     @Column(name = "built_in", nullable = false)
     private boolean builtIn = false;
 

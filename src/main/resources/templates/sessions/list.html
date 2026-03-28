@@ -80,6 +80,9 @@
                     </div>
                     <p class="text-secondary mb-0">
                         Session configured with <span class="text-light fw-semibold" th:text="${s.model}">model</span>
+                        <span th:if="${s.selectedAgentDisplayName != null and !s.selectedAgentDisplayName.isBlank()}">
+                            using <span class="text-light fw-semibold" th:text="${s.selectedAgentDisplayName}">agent</span>
+                        </span>
                         and ready for live interaction or replay.
                     </p>
                 </div>
@@ -104,6 +107,10 @@
                 <div class="fleet-meta-cell">
                     <label>Model</label>
                     <strong th:text="${s.model}">model</strong>
+                </div>
+                <div class="fleet-meta-cell">
+                    <label>Agent</label>
+                    <strong th:text="${s.selectedAgentDisplayName != null and !s.selectedAgentDisplayName.isBlank() ? s.selectedAgentDisplayName : 'Default Copilot'}">Default Copilot</strong>
                 </div>
                 <div class="fleet-meta-cell">
                     <label>Turns</label>

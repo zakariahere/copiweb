@@ -13,7 +13,7 @@
                     </p>
                     <h1 class="display-6 fw-semibold mb-3">Prompt workflows that launch like operator macros.</h1>
                     <p class="page-subtitle mb-4">
-                        Each command packages reusable intent, parameter slots, and an optional recommended agent so you can move from idea to action faster.
+                        Each command packages reusable intent and parameter slots so you can move from idea to action faster with whatever runtime agent you choose.
                     </p>
                     <div class="page-stat-strip">
                         <span class="page-stat-chip">
@@ -32,7 +32,7 @@
                         <i class="bi bi-play-circle me-1"></i>Open Session
                     </a>
                     <a th:href="@{/agents}" class="btn btn-outline-secondary btn-lg">
-                        <i class="bi bi-people me-1"></i>Browse Agents
+                        <i class="bi bi-people me-1"></i>Browse Runtime Agents
                     </a>
                 </div>
             </div>
@@ -66,18 +66,6 @@
                             <span>Built-in</span>
                         </span>
                     </div>
-
-                    <!-- Recommended agent badge -->
-                    <div th:if="${cmd.agentProfile != null}" class="d-flex align-items-center gap-1">
-                        <small class="text-secondary">Recommended agent:</small>
-                        <span class="badge border small"
-                              th:classappend="'text-' + ${cmd.agentProfile.color} + ' border-' + ${cmd.agentProfile.color}"
-                              style="background: transparent;">
-                            <i th:classappend="${cmd.agentProfile.icon} + ' me-1'"></i>
-                            <span th:text="${cmd.agentProfile.name}">Agent</span>
-                        </span>
-                    </div>
-
                     <!-- Params preview -->
                     <div th:if="${cmd.paramSchema != null and !cmd.paramSchema.isBlank()}"
                          class="d-flex flex-wrap gap-1">

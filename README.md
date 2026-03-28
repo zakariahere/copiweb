@@ -10,7 +10,7 @@ Built with **Spring Boot 4**, **Thymeleaf**, and **Server-Sent Events** — watc
 
 - **Agent Catalog** — pick from domain-specialized agents (Spring Batch, API Architect, Spring Integration, DB Migration, Code Reviewer, or General Purpose) or create your own with a custom system prompt and model
 - **Workflow Commands** — type `/` in any session to open a command palette; select a command, fill in its parameters, and the assembled prompt is inserted into the chat ready to send
-- **Session management** — create, resume, and delete Copilot SDK agent sessions with configurable model, system prompt, and streaming settings; pre-fill model and system prompt by selecting an agent profile
+- **Session management** — create, resume, and delete Copilot SDK agent sessions with configurable model, system prompt, streaming settings, and runtime custom-agent selection
 - **Real-time streaming** — response chunks arrive in the browser as they're generated via SSE, no polling
 - **Live event console** — every SDK event (tool calls, subagent spawns, errors, idle signals) is displayed in a scrollable console as it happens
 - **Tool execution timeline** — each tool invocation shows its name, arguments, and result with a live running/done state
@@ -73,7 +73,7 @@ cd copiweb
 
 Open [http://localhost:8080](http://localhost:8080).
 
-Spring Boot's Docker Compose integration starts the PostgreSQL container on first run. Hibernate creates the tables automatically (`ddl-auto=update`). On first startup, the 6 built-in agent profiles and 6 workflow commands are seeded into the database automatically.
+Spring Boot's Docker Compose integration starts the PostgreSQL container on first run. Hibernate creates the tables automatically (`ddl-auto=update`). On first startup, the built-in workflow commands are seeded into the database automatically.
 
 ---
 
@@ -128,10 +128,10 @@ Click **History** on any session to see the complete event log — user messages
 ```
 src/main/java/com/elzakaria/copiweb/
 ├── config/          # CopilotClient Spring bean, async thread pool
-├── model/           # JPA entities (AgentSession, AgentEvent, AgentProfile, WorkflowCommand) + enums
+├── model/           # JPA entities (AgentSession, AgentEvent, WorkflowCommand) + enums
 ├── repository/      # Spring Data JPA repositories
 ├── agent/           # SDK session handle, in-memory registry, event→DB+SSE bridge
-├── service/         # Session orchestration, agent profile seeding, model cache, SSE management
+├── service/         # Session orchestration, workflow seeding, model cache, discovery, SSE management
 ├── web/             # MVC controllers (Dashboard, AgentCatalog) + REST API + SSE endpoint
 └── dto/             # Request/response records
 
@@ -158,7 +158,7 @@ src/main/resources/
 
 **`@Async` persistence** — event handlers dispatch DB writes to the Spring async executor so they never block the SDK's event dispatch thread.
 
-**Agent profiles & workflow commands are seeded once** — `AgentProfileService.seedDefaults()` runs on `@PostConstruct` and only inserts rows when the tables are empty, so restarts don't re-seed.
+**Workflow commands are seeded once** — `WorkflowCommandService.seedDefaults()` runs on `@PostConstruct` and only inserts rows when the table is empty, so restarts don't re-seed.
 
 **Command palette is fully client-side** — `command-palette.js` fetches `/api/commands` on load and drives the dropdown and param modal with vanilla JS; no server round-trip until the user hits "Use Prompt" to assemble the final filled template.
 
@@ -184,9 +184,8 @@ src/main/resources/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/agents` | List all agent profiles |
-| `POST` | `/api/agents` | Create a custom agent profile |
-| `DELETE` | `/api/agents/{id}` | Delete a custom agent profile (built-in profiles cannot be deleted) |
+| `GET` | `/api/agents` | List runtime-discovered custom agents |
+| `GET` | `/api/agent-catalog` | List discovered agents, installed plugins, and registered marketplaces |
 
 ### Workflow Commands
 

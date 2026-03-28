@@ -55,6 +55,10 @@
                     <span th:text="${agentSession.model}">model</span>
                 </span>
                 <span class="session-meta-chip">
+                    <i class="bi bi-stars"></i>
+                    <span th:text="${agentSession.selectedAgentDisplayName != null and !agentSession.selectedAgentDisplayName.isBlank() ? agentSession.selectedAgentDisplayName : 'Default Copilot'}">Default Copilot</span>
+                </span>
+                <span class="session-meta-chip">
                     <i class="bi bi-chat-square-text"></i>
                     <span th:text="${agentSession.turnCount} + ' turns'">0 turns</span>
                 </span>

@@ -95,9 +95,6 @@
         }
         palette.innerHTML = filtered.map((cmd, i) => {
             const isSelected = i === selectedIdx;
-            const agentBadge = cmd.agentProfile
-                ? `<span class="badge border text-${cmd.agentProfile.color} border-${cmd.agentProfile.color} ms-1" style="background:transparent;font-size:0.65rem;">${cmd.agentProfile.name}</span>`
-                : '';
             return `
             <div class="palette-item d-flex align-items-center gap-2 px-3 py-2 cursor-pointer ${isSelected ? 'bg-primary bg-opacity-25' : ''}"
                  style="cursor:pointer;" data-idx="${i}">
@@ -106,7 +103,6 @@
                     <div class="d-flex align-items-center gap-1">
                         <span class="fw-semibold small" style="white-space:nowrap;">${escHtml(cmd.label)}</span>
                         <code class="text-secondary" style="font-size:0.7rem;">/${escHtml(cmd.name)}</code>
-                        ${agentBadge}
                     </div>
                     <div class="text-secondary" style="font-size:0.72rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(cmd.description || '')}</div>
                 </div>
@@ -160,14 +156,6 @@
                               ${p.required ? 'required' : ''}>`
                 }
             </div>`).join('');
-
-        if (cmd.agentProfile) {
-            body.insertAdjacentHTML('beforeend', `
-                <div class="alert alert-secondary d-flex align-items-center gap-2 small py-2">
-                    <i class="${cmd.agentProfile.icon} text-${cmd.agentProfile.color}"></i>
-                    Recommended agent: <strong>${escHtml(cmd.agentProfile.name)}</strong>
-                </div>`);
-        }
 
         const runBtn = document.getElementById('cmdModalRun');
         const newRunBtn = runBtn.cloneNode(true);

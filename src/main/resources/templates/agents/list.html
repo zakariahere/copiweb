@@ -11,18 +11,22 @@
                     <p class="page-kicker mb-2">
                         <i class="bi bi-people"></i>Agent Catalog
                     </p>
-                    <h1 class="display-6 fw-semibold mb-3">Curated specialists for every kind of mission.</h1>
+                    <h1 class="display-6 fw-semibold mb-3">Runtime-discovered agents from your local Copilot setup.</h1>
                     <p class="page-subtitle mb-4">
-                        Start with a built-in expert or define your own agent profile with a distinct model, prompt, and personality.
+                        This surface now reflects what the Copilot runtime actually exposes: available custom agents, installed plugins, and registered marketplaces.
                     </p>
                     <div class="page-stat-strip">
                         <span class="page-stat-chip">
                             <i class="bi bi-robot"></i>
-                            <span th:text="${agents.size()} + ' profiles available'">0 profiles available</span>
+                            <span th:text="${agents.size()} + ' custom agents detected'">0 custom agents detected</span>
                         </span>
                         <span class="page-stat-chip">
-                            <i class="bi bi-patch-check"></i>
-                            <span th:text="${agents.?[builtIn].size()} + ' built-in experts'">0 built-in experts</span>
+                            <i class="bi bi-plugin"></i>
+                            <span th:text="${installedPlugins.size()} + ' installed plugins scanned'">0 installed plugins scanned</span>
+                        </span>
+                        <span class="page-stat-chip">
+                            <i class="bi bi-shop"></i>
+                            <span th:text="${marketplaces.size()} + ' marketplaces registered'">0 marketplaces registered</span>
                         </span>
                     </div>
                 </div>
@@ -31,177 +35,174 @@
                     <a th:href="@{/sessions/new}" class="btn btn-primary btn-lg">
                         <i class="bi bi-plus-circle me-1"></i>Launch Session
                     </a>
-                    <button class="btn btn-outline-light btn-lg" data-bs-toggle="modal" data-bs-target="#newAgentModal">
-                        <i class="bi bi-magic me-1"></i>Create Custom Agent
-                    </button>
+                    <a th:href="@{/commands}" class="btn btn-outline-light btn-lg">
+                        <i class="bi bi-lightning me-1"></i>Browse Workflows
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
-        <span th:text="${success}"></span>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
-        <span th:text="${error}"></span>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    <div class="panel-surface p-4 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <p class="page-kicker mb-2">
+                    <i class="bi bi-broadcast"></i>Available Custom Agents
+                </p>
+                <h4 class="mb-2">What the runtime can actually launch right now.</h4>
+                <p class="text-secondary small mb-0">
+                    These entries come from the Copilot runtime itself, not from app-owned saved profiles.
+                </p>
+            </div>
+            <a th:href="@{/sessions/new}" class="btn btn-outline-secondary">
+                <i class="bi bi-play-circle me-1"></i>Open Composer
+            </a>
+        </div>
 
-    <div class="row g-3">
-        <div class="col-md-6 col-xl-4" th:each="agent : ${agents}">
-            <div class="catalog-card h-100 p-4"
-                 th:classappend="' border-' + ${agent.color}">
-                <div class="d-flex flex-column gap-3 h-100">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="fs-4" th:classappend="'text-' + ${agent.color}">
-                                <i th:classappend="${agent.icon}"></i>
-                            </span>
+        <div th:if="${agents.empty}" class="dashboard-empty-state text-center text-secondary py-5 px-4">
+            <i class="bi bi-radioactive fs-1 d-block mb-3"></i>
+            <h4 class="text-light mb-2">No custom agents are being exposed yet.</h4>
+            <p class="mb-3">
+                Install or enable custom Copilot agents locally and they will appear here once the runtime reports them through the SDK.
+            </p>
+        </div>
+
+        <div th:unless="${agents.empty}" class="row g-3">
+            <div class="col-md-6 col-xl-4" th:each="agent : ${agents}">
+                <div class="catalog-card h-100 p-4">
+                    <div class="d-flex flex-column gap-3 h-100">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
                             <div>
-                                <h5 class="mb-0 fw-semibold" th:text="${agent.name}">Agent</h5>
-                                <small class="text-secondary font-monospace d-block" th:text="${agent.model}">model</small>
+                                <small class="text-secondary font-monospace d-block mb-1" th:text="${agent.name}">agent-name</small>
+                                <h5 class="mb-2 fw-semibold" th:text="${agent.displayName}">Agent</h5>
                             </div>
+                            <span class="badge bg-primary" th:if="${agent.selected}">selected</span>
                         </div>
-                        <span class="badge bg-dark border border-secondary small" th:if="${agent.builtIn}">built-in</span>
-                    </div>
 
-                    <p class="text-secondary small mb-0 flex-grow-1" th:text="${agent.description}">description</p>
+                        <p class="text-secondary small mb-0 flex-grow-1" th:text="${agent.description}">description</p>
 
-                    <div class="d-flex flex-wrap gap-2">
-                        <span class="dashboard-chip">
-                            <i class="bi bi-cpu"></i>
-                            <span th:text="${agent.model}">model</span>
-                        </span>
-                        <span class="dashboard-chip" th:classappend="' text-' + ${agent.color}">
-                            <i th:classappend="${agent.icon}"></i>
-                            <span th:text="${agent.builtIn} ? 'Curated' : 'Custom'">Curated</span>
-                        </span>
-                    </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="dashboard-chip">
+                                <i class="bi bi-broadcast"></i>
+                                <span>Local Copilot runtime</span>
+                            </span>
+                            <span class="dashboard-chip">
+                                <i class="bi bi-stars"></i>
+                                <span>Custom agent</span>
+                            </span>
+                        </div>
 
-                    <div class="d-flex gap-2 mt-1">
-                        <a th:href="@{/sessions/new(profileId=${agent.id})}"
-                           class="btn btn-sm flex-grow-1"
-                           th:classappend="'btn-outline-' + ${agent.color}">
-                            <i class="bi bi-play-circle me-1"></i>Launch Session
-                        </a>
-                        <form th:if="${!agent.builtIn}"
-                              th:action="@{/agents/{id}/delete(id=${agent.id})}"
-                              method="post" class="d-inline"
-                              onsubmit="return confirm('Delete this agent profile?')">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
+                        <div class="d-flex gap-2 mt-1">
+                            <a th:href="@{/sessions/new(agent=${agent.name})}" class="btn btn-primary btn-sm flex-grow-1">
+                                <i class="bi bi-play-circle me-1"></i>Launch Session
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Add Custom Agent card -->
-        <div class="col-md-6 col-xl-4">
-            <div class="catalog-card h-100 p-4 d-flex flex-column align-items-center justify-content-center gap-3 text-center border-secondary" style="border-style: dashed;">
-                    <i class="bi bi-plus-circle fs-2 text-secondary"></i>
-                    <div>
-                        <h6 class="fw-semibold mb-1">Custom Agent</h6>
-                        <p class="text-secondary small mb-0">Define a new agent profile with a custom system prompt and model.</p>
-                    </div>
-                    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#newAgentModal">
-                        Create Agent
-                    </button>
-            </div>
-        </div>
     </div>
 
-    <!-- New Agent Modal -->
-    <div class="modal fade" id="newAgentModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content bg-dark border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create Custom Agent</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="new-agent-form">
-                    <div class="modal-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control bg-black text-light border-secondary"
-                                       id="agentName" placeholder="My Custom Agent" required/>
+    <div class="panel-surface-soft p-4 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <p class="page-kicker mb-2">
+                    <i class="bi bi-plugin"></i>Installed Plugins
+                </p>
+                <h4 class="mb-2">Local plugin inventory behind your Copilot environment.</h4>
+                <p class="text-secondary small mb-0">
+                    Plugin manifests provide context about which installs declare agents, skills, hooks, or MCP servers.
+                </p>
+            </div>
+        </div>
+
+        <div th:if="${installedPlugins.empty}" class="dashboard-empty-state text-center text-secondary py-4 px-4">
+            <i class="bi bi-plugin fs-1 d-block mb-3"></i>
+            <p class="mb-0">No installed plugin manifests were detected under the local Copilot configuration.</p>
+        </div>
+
+        <div th:unless="${installedPlugins.empty}" class="row g-3">
+            <div class="col-md-6 col-xl-4" th:each="plugin : ${installedPlugins}">
+                <div class="catalog-card h-100 p-4">
+                    <div class="d-flex flex-column gap-3 h-100">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <div>
+                                <small class="text-secondary font-monospace d-block mb-1" th:text="${plugin.source}">source</small>
+                                <h5 class="mb-1 fw-semibold" th:text="${plugin.name}">Plugin</h5>
+                                <small class="text-secondary" th:text="'v' + ${plugin.version}">v0.0.0</small>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold">Color</label>
-                                <select class="form-select bg-black text-light border-secondary" id="agentColor">
-                                    <option value="primary">Blue (primary)</option>
-                                    <option value="success">Green (success)</option>
-                                    <option value="warning">Yellow (warning)</option>
-                                    <option value="danger">Red (danger)</option>
-                                    <option value="info">Cyan (info)</option>
-                                    <option value="secondary" selected>Grey (secondary)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold">Icon</label>
-                                <input type="text" class="form-control bg-black text-light border-secondary font-monospace"
-                                       id="agentIcon" value="bi-robot" placeholder="bi-robot"/>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Description</label>
-                                <input type="text" class="form-control bg-black text-light border-secondary"
-                                       id="agentDescription" placeholder="What this agent specialises in"/>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Default Model</label>
-                                <input type="text" class="form-control bg-black text-light border-secondary font-monospace"
-                                       id="agentModel" value="gpt-4.1"/>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">System Prompt</label>
-                                <textarea class="form-control bg-black text-light border-secondary font-monospace"
-                                          id="agentSystemPrompt" rows="5"
-                                          placeholder="You are an expert in..."></textarea>
-                            </div>
+                            <span class="badge bg-dark border border-secondary">plugin</span>
                         </div>
-                        <div id="agent-modal-error" class="alert alert-danger mt-3" style="display:none;"></div>
+
+                        <p class="text-secondary small mb-0 flex-grow-1" th:text="${plugin.description}">description</p>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="dashboard-chip" th:if="${plugin.declaresAgents}">
+                                <i class="bi bi-robot"></i>
+                                <span>declares agents</span>
+                            </span>
+                            <span class="dashboard-chip" th:if="${plugin.hasAgentFiles}">
+                                <i class="bi bi-file-earmark-code"></i>
+                                <span>agent files present</span>
+                            </span>
+                            <span class="dashboard-chip" th:if="${plugin.hasSkills}">
+                                <i class="bi bi-lightning"></i>
+                                <span>skills</span>
+                            </span>
+                            <span class="dashboard-chip" th:if="${plugin.hasHooks}">
+                                <i class="bi bi-arrow-repeat"></i>
+                                <span>hooks</span>
+                            </span>
+                            <span class="dashboard-chip" th:if="${plugin.hasMcpServers}">
+                                <i class="bi bi-hdd-network"></i>
+                                <span>MCP</span>
+                            </span>
+                        </div>
                     </div>
-                    <div class="modal-footer border-secondary">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle me-1"></i>Create Agent
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-    document.getElementById('new-agent-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const err = document.getElementById('agent-modal-error');
-        err.style.display = 'none';
-        const body = {
-            name: document.getElementById('agentName').value.trim(),
-            description: document.getElementById('agentDescription').value.trim(),
-            color: document.getElementById('agentColor').value,
-            icon: document.getElementById('agentIcon').value.trim(),
-            model: document.getElementById('agentModel').value.trim(),
-            systemPrompt: document.getElementById('agentSystemPrompt').value.trim(),
-        };
-        try {
-            const res = await fetch('/api/agents', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(body)
-            });
-            if (!res.ok) throw new Error('Failed to create agent');
-            window.location.reload();
-        } catch (ex) {
-            err.textContent = ex.message;
-            err.style.display = '';
-        }
-    });
-    </script>
+    <div class="panel-surface-soft p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <p class="page-kicker mb-2">
+                    <i class="bi bi-shop"></i>Registered Marketplaces
+                </p>
+                <h4 class="mb-2">Where plugin installs can come from.</h4>
+                <p class="text-secondary small mb-0">
+                    Built-in and registered marketplaces are shown here for provenance, not as app-owned agent definitions.
+                </p>
+            </div>
+        </div>
+
+        <div th:if="${marketplaces.empty}" class="dashboard-empty-state text-center text-secondary py-4 px-4">
+            <i class="bi bi-shop fs-1 d-block mb-3"></i>
+            <p class="mb-0">No plugin marketplaces were reported by the local Copilot CLI.</p>
+        </div>
+
+        <div th:unless="${marketplaces.empty}" class="row g-3">
+            <div class="col-md-6 col-xl-4" th:each="marketplace : ${marketplaces}">
+                <div class="catalog-card h-100 p-4">
+                    <div class="d-flex flex-column gap-3 h-100">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <div>
+                                <h5 class="mb-1 fw-semibold" th:text="${marketplace.name}">Marketplace</h5>
+                                <small class="text-secondary font-monospace d-block" th:text="${marketplace.repository}">repo</small>
+                            </div>
+                            <span class="badge" th:classappend="${marketplace.builtIn} ? 'bg-primary' : 'bg-dark border border-secondary'"
+                                  th:text="${marketplace.builtIn} ? 'built-in' : 'registered'">built-in</span>
+                        </div>
+
+                        <p class="text-secondary small mb-0 flex-grow-1">
+                            Copilot CLI can browse and install plugins from this marketplace.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 </body>
 </html>

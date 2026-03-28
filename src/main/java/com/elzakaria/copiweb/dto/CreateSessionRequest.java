@@ -8,7 +8,8 @@ public record CreateSessionRequest(
     @NotBlank String model,
     String systemPrompt,
     String workingDirectory,
-    @NotNull Boolean streaming
+    @NotNull Boolean streaming,
+    String agentName
 ) {
     public @NotNull Boolean streaming() {
         return streaming != null && streaming;

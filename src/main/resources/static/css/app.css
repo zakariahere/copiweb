@@ -550,6 +550,17 @@ pre.lh-base { line-height: 1.6; }
     box-shadow: 0 0 16px rgba(255,255,255,0.08);
 }
 
+.agent-pick-btn-selected {
+    border-color: rgba(120, 181, 255, 0.45) !important;
+    background:
+        radial-gradient(circle at top right, rgba(13,110,253,0.16), transparent 45%),
+        rgba(255,255,255,0.08) !important;
+    color: #ffffff !important;
+    box-shadow:
+        0 0 0 1px rgba(120, 181, 255, 0.16),
+        0 16px 30px rgba(0, 0, 0, 0.22);
+}
+
 .modal-content {
     border-radius: 1rem;
     background:

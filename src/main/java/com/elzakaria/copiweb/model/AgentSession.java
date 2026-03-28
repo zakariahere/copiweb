@@ -1,5 +1,6 @@
 package com.elzakaria.copiweb.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,6 +36,12 @@ public class AgentSession {
     @Column(name = "working_directory")
     private String workingDirectory;
 
+    @Column(name = "selected_agent_name", length = 256)
+    private String selectedAgentName;
+
+    @Column(name = "selected_agent_display_name", length = 256)
+    private String selectedAgentDisplayName;
+
     @Column(nullable = false)
     private boolean streaming = true;
 
@@ -58,5 +65,6 @@ public class AgentSession {
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("sequence ASC")
+    @JsonIgnore
     private List<AgentEvent> events = new ArrayList<>();
 }
