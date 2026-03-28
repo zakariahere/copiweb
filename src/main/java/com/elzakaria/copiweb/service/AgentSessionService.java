@@ -22,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,6 +38,7 @@ public class AgentSessionService {
     private final CopilotSessionRegistry registry;
     private final SessionEventBridge eventBridge;
     private final SseService sseService;
+    private final List<ToolDefinition> toolDefinitions;
 
     @PostConstruct
     public void init() throws Exception {
@@ -51,14 +51,15 @@ public class AgentSessionService {
 
     public AgentSession createSession(CreateSessionRequest req) throws Exception {
         var config = new SessionConfig()
-            .setModel(req.model())
-            .setStreaming(req.streaming())
-            .setOnPermissionRequest(PermissionHandler.APPROVE_ALL);
+                .setModel(req.model())
+                .setStreaming(req.streaming())
+                .setTools(this.toolDefinitions)
+                .setOnPermissionRequest(PermissionHandler.APPROVE_ALL);
 
         if (req.systemPrompt() != null && !req.systemPrompt().isBlank()) {
             config.setSystemMessage(new SystemMessageConfig()
-                .setMode(SystemMessageMode.APPEND)
-                .setContent(req.systemPrompt()));
+                    .setMode(SystemMessageMode.APPEND)
+                    .setContent(req.systemPrompt()));
         }
 
         if (req.workingDirectory() != null && !req.workingDirectory().isBlank()) {
@@ -92,11 +93,11 @@ public class AgentSessionService {
     @Transactional
     public AgentSession resumeSession(Long dbId) throws Exception {
         var dbSession = sessionRepo.findById(dbId)
-            .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
+                .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
 
         var sdkSession = copilotClient.resumeSession(
-            dbSession.getSessionId(),
-            new ResumeSessionConfig().setModel(dbSession.getModel())
+                dbSession.getSessionId(),
+                new ResumeSessionConfig().setModel(dbSession.getModel())
         ).get();
 
         updateSelectedAgent(dbSession, getCurrentAgent(sdkSession, dbSession.getSessionId()));
@@ -104,7 +105,7 @@ public class AgentSessionService {
         dbSession = sessionRepo.save(dbSession);
 
         int nextSeq = eventRepo.findBySessionOrderBySequenceAsc(dbSession)
-            .stream().mapToInt(AgentEvent::getSequence).max().orElse(-1) + 1;
+                .stream().mapToInt(AgentEvent::getSequence).max().orElse(-1) + 1;
 
         var handle = new CopilotSessionHandle(sdkSession, dbSession.getSessionId(), dbId, new AtomicInteger(nextSeq));
         registry.register(handle);
@@ -116,10 +117,10 @@ public class AgentSessionService {
 
     public void sendMessage(Long dbId, SendMessageRequest req) throws Exception {
         var dbSession = sessionRepo.findById(dbId)
-            .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
+                .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
 
         var handle = registry.findByDbSessionId(dbId)
-            .orElseThrow(() -> new IllegalStateException("Session not active in registry: " + dbId));
+                .orElseThrow(() -> new IllegalStateException("Session not active in registry: " + dbId));
 
         // Persist user message
         eventBridge.persistEventAsync(dbId, handle, EventType.USER_MSG, "user", req.message(), null, null, null);
@@ -144,7 +145,7 @@ public class AgentSessionService {
     @Transactional
     public void deleteSession(Long dbId) throws Exception {
         var dbSession = sessionRepo.findById(dbId)
-            .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
+                .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
 
         String sdkSessionId = dbSession.getSessionId();
 
@@ -168,7 +169,7 @@ public class AgentSessionService {
 
     public AgentSession getSession(Long dbId) {
         return sessionRepo.findById(dbId)
-            .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
+                .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
     }
 
     public List<AgentEvent> getHistory(Long dbId) {
@@ -216,9 +217,9 @@ public class AgentSessionService {
 
         dbSession.setSelectedAgentName(selectedAgent.getName());
         dbSession.setSelectedAgentDisplayName(
-            selectedAgent.getDisplayName() != null && !selectedAgent.getDisplayName().isBlank()
-                ? selectedAgent.getDisplayName()
-                : selectedAgent.getName()
+                selectedAgent.getDisplayName() != null && !selectedAgent.getDisplayName().isBlank()
+                        ? selectedAgent.getDisplayName()
+                        : selectedAgent.getName()
         );
     }
 }

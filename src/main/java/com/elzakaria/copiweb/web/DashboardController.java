@@ -8,6 +8,7 @@ import com.elzakaria.copiweb.repository.AgentSessionRepository;
 import com.elzakaria.copiweb.service.AgentDiscoveryService;
 import com.elzakaria.copiweb.service.AgentSessionService;
 import com.elzakaria.copiweb.service.ModelService;
+import com.elzakaria.copiweb.service.ToolRegistryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class DashboardController {
     private final AgentEventRepository eventRepo;
     private final ModelService modelService;
     private final AgentDiscoveryService agentDiscoveryService;
+    private final ToolRegistryService toolRegistryService;
 
     @GetMapping("/")
     public String index() {
@@ -54,6 +56,8 @@ public class DashboardController {
         model.addAttribute("recentActivity", recentActivity);
         model.addAttribute("recentSessions", recentSessions);
         model.addAttribute("spotlightSession", spotlightSession);
+        model.addAttribute("registeredTools", toolRegistryService.getToolViews());
+        model.addAttribute("toolCount", toolRegistryService.count());
         return "dashboard";
     }
 
