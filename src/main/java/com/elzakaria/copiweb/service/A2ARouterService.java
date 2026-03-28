@@ -108,18 +108,23 @@ public class A2ARouterService {
     }
 
     private void deliver(A2AMessage msg, AgentSession receiver) {
-        msg.setStatus(A2AMessageStatus.DELIVERED);
-        msg.setDeliveredAt(LocalDateTime.now());
-        messageRepo.save(msg);
+        var handleOpt = registry.findByDbSessionId(receiver.getId());
 
-        // Notify the receiver session via SSE
-        registry.findByDbSessionId(receiver.getId()).ifPresent(handle -> {
-            String senderName = msg.getSenderSession().getName();
+        if (handleOpt.isPresent()) {
+            var handle = handleOpt.get();
+            msg.setStatus(A2AMessageStatus.DELIVERED);
+            msg.setDeliveredAt(LocalDateTime.now());
+            messageRepo.save(msg);
+
             sseService.broadcast(handle.sdkSessionId(),
                 EventDto.a2aReceive(String.valueOf(msg.getSenderSession().getId()), msg.getPayload(), handle.sdkSessionId()));
             log.info("A2A message delivered: {} -> {} (correlationId={})",
-                senderName, receiver.getName(), msg.getCorrelationId());
-        });
+                msg.getSenderSession().getName(), receiver.getName(), msg.getCorrelationId());
+        } else {
+            msg.setStatus(A2AMessageStatus.FAILED);
+            messageRepo.save(msg);
+            log.warn("A2A delivery failed: receiver session {} not active in registry", receiver.getId());
+        }
     }
 
     private void broadcastSend(AgentSession sender, AgentSession receiver, A2AMessage msg) {
