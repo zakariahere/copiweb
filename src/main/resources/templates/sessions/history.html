@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head><title th:text="'History — ' + ${agentSession.name}">History</title></head>
+<body>
+<section>
+    <div class="d-flex align-items-center mb-4 flex-wrap gap-2">
+        <a th:href="@{/sessions/{id}(id=${agentSession.id})}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="mb-0 me-2">
+            <i class="bi bi-clock-history me-2"></i>History
+        </h2>
+        <span class="text-secondary" th:text="'— ' + ${agentSession.name}">Session Name</span>
+        <span class="ms-auto badge bg-dark border border-secondary" th:text="${events.size()} + ' events'">0 events</span>
+    </div>
+
+    <div th:if="${events.empty}" class="text-center text-secondary py-5">
+        <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+        No events recorded for this session yet.
+    </div>
+
+    <div th:unless="${events.empty}" class="d-flex flex-column gap-3">
+        <div th:each="e : ${events}"
+             class="card border"
+             th:classappend="${e.eventType.name() == 'USER_MSG'} ? 'border-info bg-info bg-opacity-10' :
+                              (${e.eventType.name() == 'ASSISTANT_MSG'} ? 'border-success bg-success bg-opacity-10' :
+                              (${e.eventType.name() == 'SESSION_ERROR'} ? 'border-danger bg-danger bg-opacity-10' :
+                              (${e.eventType.name().startsWith('TOOL_')} ? 'border-warning bg-warning bg-opacity-10' :
+                              'border-secondary bg-secondary bg-opacity-10')))">
+            <div class="card-header border-0 bg-transparent d-flex justify-content-between align-items-center py-2">
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Role icon -->
+                    <i th:classappend="${e.role == 'user'} ? 'bi-person-fill text-info' :
+                                        (${e.role == 'assistant'} ? 'bi-robot text-success' :
+                                        (${e.role == 'tool'} ? 'bi-tools text-warning' : 'bi-gear text-secondary'))"
+                       class="bi fs-5"></i>
+                    <span class="badge bg-dark text-light" th:text="${e.eventType}">TYPE</span>
+                    <span th:if="${e.toolName}" class="badge bg-warning text-dark" th:text="${e.toolName}">tool</span>
+                </div>
+                <div class="d-flex align-items-center gap-3 text-secondary small">
+                    <span th:text="'#' + ${e.sequence}">#0</span>
+                    <span th:text="${#temporals.format(e.occurredAt, 'yyyy-MM-dd HH:mm:ss')}">time</span>
+                </div>
+            </div>
+            <div class="card-body py-2" th:if="${e.content != null and !e.content.isBlank()}">
+                <pre class="mb-0 text-light small lh-base" style="white-space: pre-wrap; word-break: break-word;"
+                     th:text="${e.content}">content</pre>
+            </div>
+            <div class="card-body py-2" th:if="${e.toolArgs != null or e.toolResult != null}">
+                <div th:if="${e.toolArgs != null}" class="mb-2">
+                    <small class="text-secondary fw-semibold d-block mb-1">Args:</small>
+                    <pre class="bg-black rounded p-2 mb-0 small text-warning"
+                         style="white-space: pre-wrap; max-height: 150px; overflow-y:auto;"
+                         th:text="${e.toolArgs}">args</pre>
+                </div>
+                <div th:if="${e.toolResult != null}">
+                    <small class="text-secondary fw-semibold d-block mb-1">Result:</small>
+                    <pre class="bg-black rounded p-2 mb-0 small text-light"
+                         style="white-space: pre-wrap; max-height: 200px; overflow-y:auto;"
+                         th:text="${e.toolResult}">result</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

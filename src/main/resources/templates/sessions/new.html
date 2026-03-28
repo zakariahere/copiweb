@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head><title>New Session</title></head>
+<body>
+<section>
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="d-flex align-items-center mb-4">
+                <a th:href="@{/sessions}" class="btn btn-outline-secondary btn-sm me-3">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h2 class="mb-0"><i class="bi bi-plus-circle me-2"></i>New Session</h2>
+            </div>
+
+            <div th:if="${error}" class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <div class="card bg-secondary bg-opacity-10 border-secondary">
+                <div class="card-body p-4">
+                    <form th:action="@{/sessions}" method="post" th:object="${createRequest}">
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label fw-semibold">Session Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control bg-dark text-light border-secondary"
+                                   id="name" th:field="*{name}" placeholder="e.g. Code Review Agent"
+                                   th:classappend="${#fields.hasErrors('name')} ? 'is-invalid' : ''"/>
+                            <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="model" class="form-label fw-semibold">Model <span class="text-danger">*</span></label>
+                            <select class="form-select bg-dark text-light border-secondary" id="model" th:field="*{model}">
+                                <option th:each="m : ${models}"
+                                        th:value="${m.id}"
+                                        th:text="${m.name} + ' (' + ${m.id} + ')'"
+                                        th:selected="${m.id == 'gpt-4.1'}">Model</option>
+                                <!-- Fallback if models haven't loaded -->
+                                <option th:if="${models.empty}" value="gpt-4.1">gpt-4.1 (default)</option>
+                                <option th:if="${models.empty}" value="claude-sonnet-4">claude-sonnet-4</option>
+                                <option th:if="${models.empty}" value="o3-mini">o3-mini</option>
+                            </select>
+                            <div class="invalid-feedback" th:if="${#fields.hasErrors('model')}" th:errors="*{model}"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="systemPrompt" class="form-label fw-semibold">System Prompt
+                                <span class="text-secondary fw-normal">(optional)</span>
+                            </label>
+                            <textarea class="form-control bg-dark text-light border-secondary font-monospace"
+                                      id="systemPrompt" th:field="*{systemPrompt}"
+                                      rows="4" placeholder="Additional instructions appended to the default system prompt..."></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="streaming"
+                                       th:field="*{streaming}" role="switch"/>
+                                <label class="form-check-label fw-semibold" for="streaming">
+                                    Enable Streaming
+                                    <small class="text-secondary fw-normal ms-1">— receive response chunks in real time</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-play-circle me-1"></i>Create Session
+                            </button>
+                            <a th:href="@{/sessions}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

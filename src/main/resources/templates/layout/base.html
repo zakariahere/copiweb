@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${title} + ' — CoPiWeb'">CoPiWeb</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body class="bg-dark text-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-black border-bottom border-secondary">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold text-primary" th:href="@{/dashboard}">
+            <i class="bi bi-robot me-2"></i>CoPiWeb
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/dashboard}">
+                        <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/sessions}">
+                        <i class="bi bi-collection me-1"></i>Sessions
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/sessions/new}">
+                        <i class="bi bi-plus-circle me-1"></i>New Session
+                    </a>
+                </li>
+            </ul>
+            <span class="navbar-text text-secondary small">
+                <i class="bi bi-circle-fill text-success me-1" style="font-size:0.5rem;"></i>Copilot SDK v0.2.1
+            </span>
+        </div>
+    </div>
+</nav>
+
+<main class="container-fluid py-4">
+    <div th:replace="${content}"></div>
+</main>
+
+<footer class="border-top border-secondary text-center text-secondary small py-3">
+    CoPiWeb &mdash; GitHub Copilot SDK Agent Dashboard
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

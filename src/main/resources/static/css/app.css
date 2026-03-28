@@ -1,0 +1,79 @@
+/* CoPiWeb — Agent Dashboard Styles */
+
+/* ---- Status dot indicator ---- */
+.status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.status-dot.status-idle        { background-color: #0d6efd; }
+.status-dot.status-running     { background-color: #ffc107; animation: pulse 1s infinite; }
+.status-dot.status-active      { background-color: #198754; }
+.status-dot.status-error       { background-color: #dc3545; }
+.status-dot.status-disconnected{ background-color: #6c757d; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+}
+
+/* ---- Streaming cursor blink ---- */
+.cursor-blink {
+    animation: blink 0.8s step-end infinite;
+    color: #20c997;
+}
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
+/* ---- Code / pre blocks ---- */
+pre.lh-base { line-height: 1.6; }
+
+/* ---- Monospace stream output ---- */
+#stream-output {
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 40px;
+}
+
+/* ---- Event console entries ---- */
+.event-entry {
+    line-height: 1.4;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 2px;
+}
+
+/* ---- Tool card ---- */
+.tool-card {
+    transition: border-color 0.3s;
+}
+
+/* ---- Form inputs dark override ---- */
+.form-control:focus,
+.form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+    background-color: #1a1a2e;
+    color: #f8f9fa;
+}
+
+/* ---- Card hover for session list ---- */
+.table-hover tbody tr:hover td {
+    background-color: rgba(13, 110, 253, 0.08);
+}
+
+/* ---- Scrollbar (webkit) ---- */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: #1a1a1a; }
+::-webkit-scrollbar-thumb  { background: #444; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #666; }
+
+/* ---- Full-height layout for detail page ---- */
+@media (max-width: 991px) {
+    .col-lg-7, .col-lg-5 {
+        height: auto !important;
+    }
+}
