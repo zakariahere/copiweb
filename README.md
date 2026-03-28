@@ -2,13 +2,15 @@
 
 > An advanced web dashboard for managing and observing [GitHub Copilot SDK](https://github.com/github/copilot-sdk-java) agent sessions in real time.
 
-Built with **Spring Boot 4**, **Thymeleaf**, and **Server-Sent Events** — watch your AI agents think, use tools, and spawn subagents live in the browser.
+Built with **Spring Boot 4**, **Thymeleaf**, and **Server-Sent Events** — watch your AI agents think, use tools, and spawn subagents live in the browser. Includes a domain-specialized **Agent Catalog** and a **Workflow Command** system for launching pre-built prompt templates from within any session.
 
 ---
 
 ## Features
 
-- **Session management** — create, resume, and delete Copilot SDK agent sessions with configurable model, system prompt, and streaming settings
+- **Agent Catalog** — pick from domain-specialized agents (Spring Batch, API Architect, Spring Integration, DB Migration, Code Reviewer, or General Purpose) or create your own with a custom system prompt and model
+- **Workflow Commands** — type `/` in any session to open a command palette; select a command, fill in its parameters, and the assembled prompt is inserted into the chat ready to send
+- **Session management** — create, resume, and delete Copilot SDK agent sessions with configurable model, system prompt, streaming settings, and runtime custom-agent selection
 - **Real-time streaming** — response chunks arrive in the browser as they're generated via SSE, no polling
 - **Live event console** — every SDK event (tool calls, subagent spawns, errors, idle signals) is displayed in a scrollable console as it happens
 - **Tool execution timeline** — each tool invocation shows its name, arguments, and result with a live running/done state
@@ -71,15 +73,26 @@ cd copiweb
 
 Open [http://localhost:8080](http://localhost:8080).
 
-Spring Boot's Docker Compose integration starts the PostgreSQL container on first run. Hibernate creates the tables automatically (`ddl-auto=update`).
+Spring Boot's Docker Compose integration starts the PostgreSQL container on first run. Hibernate creates the tables automatically (`ddl-auto=update`). On first startup, the built-in workflow commands are seeded into the database automatically.
 
 ---
 
 ## Usage
 
-### 1. Create a session
+### 1. Pick an agent and create a session
 
-Click **New Session**, pick a model (populated from the live SDK model list), optionally add a system prompt, and choose whether to enable streaming.
+Go to **Agents** to browse the built-in domain profiles, or click **New Session** and pick one from the agent picker at the top. Selecting an agent pre-fills the model and system prompt fields. You can still override both.
+
+**Built-in agents:**
+
+| Agent | Specialisation |
+|-------|---------------|
+| General Purpose | No domain bias — vanilla agent for any task |
+| Spring Batch Analyst | Job forensics, failure analysis, skip/retry strategies |
+| API Architect | Contract-first REST API design and OpenAPI scaffolding |
+| Spring Integration Debug | Message flow inspection, backpressure, adapter debugging |
+| DB Migration Engineer | Flyway/Liquibase planning, safety review, rollback strategy |
+| Code Reviewer | Logic errors, security (OWASP), performance, Spring anti-patterns |
 
 ### 2. Chat with the agent
 
@@ -89,7 +102,22 @@ Type a message and press **Send** or `Ctrl+Enter`. The response streams in real 
 - Tool executions appear as cards in the **Tool Executions** timeline with live status
 - Every SDK event is logged to the **Event Console** on the right
 
-### 3. Observe and replay
+### 3. Use workflow commands
+
+Type `/` in the message input to open the command palette. Navigate with arrow keys or click a command:
+
+| Command | What it does |
+|---------|-------------|
+| `/forensics` | Analyze a Spring Batch job failure — diagnose root cause and suggest fix |
+| `/scaffold` | Generate a Spring Boot REST controller from an entity description |
+| `/migrate` | Plan a Flyway migration script with rollback and index analysis |
+| `/review` | Multi-concern code review (security, performance, Spring best practices) |
+| `/monitor` | Ask the agent to watch a metric or log pattern for anomalies |
+| `/integration-debug` | Debug a Spring Integration flow for backpressure or message loss |
+
+Commands with parameters open a form modal — fill in the fields and click **Use Prompt** to assemble and insert the final prompt into the chat.
+
+### 4. Observe and replay
 
 Click **History** on any session to see the complete event log — user messages, assistant responses, tool calls with full JSON args/results, subagent events — in order.
 
@@ -100,16 +128,24 @@ Click **History** on any session to see the complete event log — user messages
 ```
 src/main/java/com/elzakaria/copiweb/
 ├── config/          # CopilotClient Spring bean, async thread pool
-├── model/           # JPA entities (AgentSession, AgentEvent) + enums
+├── model/           # JPA entities (AgentSession, AgentEvent, WorkflowCommand) + enums
 ├── repository/      # Spring Data JPA repositories
 ├── agent/           # SDK session handle, in-memory registry, event→DB+SSE bridge
-├── service/         # Session orchestration, model cache, SSE emitter management
-├── web/             # MVC controllers + REST API + SSE endpoint
+├── service/         # Session orchestration, workflow seeding, model cache, discovery, SSE management
+├── web/             # MVC controllers (Dashboard, AgentCatalog) + REST API + SSE endpoint
 └── dto/             # Request/response records
 
 src/main/resources/
-├── templates/       # Thymeleaf templates (layout, dashboard, sessions)
-└── static/          # app.css, sse-client.js, chat.js
+├── templates/
+│   ├── layout/      # Shared base layout (Bootstrap 5, navbar)
+│   ├── sessions/    # Session list, new, detail, history
+│   ├── agents/      # Agent catalog (list, create custom)
+│   └── commands/    # Workflow command catalog
+└── static/
+    └── js/
+        ├── sse-client.js        # SSE stream consumer
+        ├── chat.js              # Send/abort, input state
+        └── command-palette.js   # "/" command palette + param modal
 ```
 
 ### Key architectural decisions
@@ -122,9 +158,15 @@ src/main/resources/
 
 **`@Async` persistence** — event handlers dispatch DB writes to the Spring async executor so they never block the SDK's event dispatch thread.
 
+**Workflow commands are seeded once** — `WorkflowCommandService.seedDefaults()` runs on `@PostConstruct` and only inserts rows when the table is empty, so restarts don't re-seed.
+
+**Command palette is fully client-side** — `command-palette.js` fetches `/api/commands` on load and drives the dropdown and param modal with vanilla JS; no server round-trip until the user hits "Use Prompt" to assemble the final filled template.
+
 ---
 
 ## REST API
+
+### Sessions
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -137,6 +179,20 @@ src/main/resources/
 | `GET` | `/api/sessions/{id}/history` | Full event list |
 | `GET` | `/api/sessions/{sdkId}/stream` | SSE event stream (`text/event-stream`) |
 | `GET` | `/api/models` | List available models |
+
+### Agent Catalog
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/agents` | List runtime-discovered custom agents |
+| `GET` | `/api/agent-catalog` | List discovered agents, installed plugins, and registered marketplaces |
+
+### Workflow Commands
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/commands` | List all workflow commands (includes param schema) |
+| `POST` | `/api/commands/{id}/assemble` | Fill a command's prompt template with params; returns `{"prompt": "..."}` |
 
 ---
 

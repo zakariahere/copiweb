@@ -11,9 +11,11 @@
 
     const streamOutput = document.getElementById('stream-output');
     const streamCursor = document.getElementById('stream-cursor');
+    const streamEmptyState = document.getElementById('stream-empty-state');
     const eventConsole = document.getElementById('event-console');
-    const toolSection = document.getElementById('tool-section');
     const toolTimeline = document.getElementById('tool-timeline');
+    let lastStatus = normalizeStatus(meta.dataset.status);
+    let lastStableStatus = lastStatus;
 
     // Track active tool cards by tool name
     const activeToolCards = new Map();
@@ -26,6 +28,7 @@
 
         evtSource.onopen = () => {
             reconnectDelay = 1000;
+            setStatus(lastStableStatus);
         };
 
         evtSource.onmessage = (e) => {
@@ -38,12 +41,14 @@
 
             switch (event.type) {
                 case 'ASSISTANT_DELTA':
+                    hideStreamEmptyState();
                     if (streamCursor) streamCursor.style.display = 'inline';
                     streamOutput.insertAdjacentText('beforeend', event.content || '');
                     streamOutput.parentElement.scrollTop = streamOutput.parentElement.scrollHeight;
                     break;
 
                 case 'ASSISTANT_MSG':
+                    hideStreamEmptyState();
                     if (event.content && streamOutput.textContent === '') {
                         streamOutput.textContent = event.content;
                     }
@@ -58,7 +63,6 @@
                     break;
 
                 case 'TOOL_START':
-                    showToolSection();
                     addToolCard(event.toolCallId, event.toolName, event.args, 'running');
                     break;
 
@@ -93,6 +97,8 @@
 
         evtSource.onerror = () => {
             evtSource.close();
+            setStatus('disconnected');
+            if (streamCursor) streamCursor.style.display = 'none';
             // Attempt reconnect with backoff
             setTimeout(() => {
                 reconnectDelay = Math.min(reconnectDelay * 2, 30000);
@@ -101,12 +107,15 @@
         };
     }
 
-    function showToolSection() {
-        if (toolSection) toolSection.style.display = '';
+    function hideStreamEmptyState() {
+        if (streamEmptyState) {
+            streamEmptyState.style.display = 'none';
+        }
     }
 
     function addToolCard(toolCallId, toolName, args, state) {
         if (!toolTimeline || !toolCallId) return;
+        removeToolEmptyState();
         const id = 'tool-' + toolCallId.replace(/\W/g, '_');
         const card = document.createElement('div');
         card.className = 'tool-card mb-1 p-2 rounded border border-warning bg-warning bg-opacity-10 small';
@@ -145,6 +154,7 @@
 
     function appendConsoleEntry(event, extraClass) {
         if (!eventConsole) return;
+        removeEventConsoleEmptyState();
         const ts = new Date(event.timestamp).toLocaleTimeString();
         const typeClass = {
             'USER_MSG': 'text-info',
@@ -177,11 +187,22 @@
     }
 
     function appendErrorBanner(message) {
+        document.querySelectorAll('.session-stream-error-banner').forEach(el => el.remove());
         const banner = document.createElement('div');
-        banner.className = 'alert alert-danger alert-dismissible mt-2';
+        banner.className = 'alert alert-danger alert-dismissible mt-2 session-stream-error-banner';
         banner.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i>${escapeHtml(message || 'An error occurred.')}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
         const streamCard = streamOutput?.closest('.card');
         if (streamCard) streamCard.after(banner);
+    }
+
+    function removeToolEmptyState() {
+        const emptyState = document.getElementById('tool-empty-state');
+        if (emptyState) emptyState.remove();
+    }
+
+    function removeEventConsoleEmptyState() {
+        const emptyState = document.getElementById('event-console-empty');
+        if (emptyState) emptyState.remove();
     }
 
     function escapeHtml(str) {
@@ -197,8 +218,21 @@
         return str.length > len ? str.slice(0, len) + '…' : str;
     }
 
-    // Expose setStatus globally for chat.js
-    window.setStatus = function (state) {
+    function normalizeStatus(status) {
+        return ({
+            'ACTIVE': 'active',
+            'CREATING': 'running',
+            'IDLE': 'idle',
+            'ERROR': 'error',
+            'CLOSED': 'closed',
+        }[status] || 'idle');
+    }
+
+    function setStatus(state) {
+        lastStatus = state;
+        if (state !== 'disconnected') {
+            lastStableStatus = state;
+        }
         const dot = document.getElementById('status-dot');
         const text = document.getElementById('status-text');
         const badge = document.getElementById('status-badge');
@@ -213,11 +247,16 @@
                 'running': 'bg-warning text-dark',
                 'idle': 'bg-primary',
                 'error': 'bg-danger',
+                'closed': 'bg-secondary',
                 'disconnected': 'bg-secondary',
             }[state] || 'bg-secondary');
             badge.textContent = state.toUpperCase();
         }
-    };
+    }
 
+    // Expose setStatus globally for chat.js
+    window.setStatus = setStatus;
+
+    setStatus(lastStatus);
     connect();
 })();

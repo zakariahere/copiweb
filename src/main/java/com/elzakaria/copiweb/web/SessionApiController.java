@@ -31,6 +31,7 @@ public class SessionApiController {
         return sessionService.listSessions().stream()
             .map(s -> new SessionSummaryDto(
                 s.getId(), s.getSessionId(), s.getName(), s.getModel(),
+                s.getSelectedAgentName(), s.getSelectedAgentDisplayName(),
                 s.getStatus(), s.getTurnCount(), s.getCreatedAt(), s.getLastActiveAt()))
             .toList();
     }

@@ -9,6 +9,8 @@ public record SessionSummaryDto(
     String sessionId,
     String name,
     String model,
+    String selectedAgentName,
+    String selectedAgentDisplayName,
     SessionStatus status,
     int turnCount,
     LocalDateTime createdAt,

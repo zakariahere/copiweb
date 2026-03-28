@@ -5,94 +5,215 @@
 <body>
 <section>
     <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-            <div class="d-flex align-items-center mb-4">
-                <a th:href="@{/sessions}" class="btn btn-outline-secondary btn-sm me-3">
-                    <i class="bi bi-arrow-left"></i>
-                </a>
-                <h2 class="mb-0"><i class="bi bi-plus-circle me-2"></i>New Session</h2>
+        <div class="col-xl-10">
+            <div class="page-hero card border-0 mb-4">
+                <div class="card-body page-hero-body p-4 p-xl-5">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-4">
+                        <div>
+                            <p class="page-kicker mb-2">
+                                <i class="bi bi-play-circle"></i>Session Composer
+                            </p>
+                            <h1 class="display-6 fw-semibold mb-3">Launch a new Copilot mission.</h1>
+                            <p class="page-subtitle mb-4">
+                                Choose a runtime-discovered custom agent, pick a model, shape the context, and decide whether the experience should stream live from the first token.
+                            </p>
+                            <div class="page-stat-strip">
+                                <span class="page-stat-chip">
+                                    <i class="bi bi-people"></i>
+                                    <span th:text="${availableAgents.size()} + ' runtime agents available'">0 runtime agents available</span>
+                                </span>
+                                <span class="page-stat-chip">
+                                    <i class="bi bi-cpu"></i>
+                                    <span th:text="${models.size()} + ' models detected'">0 models detected</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <a th:href="@{/sessions}" class="btn btn-outline-light btn-lg">
+                                <i class="bi bi-arrow-left me-1"></i>Back to Fleet
+                            </a>
+                            <a th:href="@{/agents}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-people me-1"></i>Browse Runtime Agents
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div th:if="${error}" class="alert alert-danger">
                 <i class="bi bi-exclamation-triangle me-2"></i><span th:text="${error}"></span>
             </div>
 
-            <div class="card bg-secondary bg-opacity-10 border-secondary">
-                <div class="card-body p-4">
-                    <form th:action="@{/sessions}" method="post" th:object="${createRequest}">
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-4">
+                    <div class="panel-surface p-4 mb-4">
+                        <p class="page-kicker mb-2">
+                            <i class="bi bi-people"></i>Agent Picker
+                        </p>
+                        <h4 class="mb-2">Start with a runtime-discovered agent</h4>
+                        <p class="text-secondary small mb-4">
+                            Agent selection is applied through the Copilot SDK before the first turn. Model and system prompt remain yours to tune.
+                        </p>
 
-                        <div class="mb-3">
-                            <label for="name" class="form-label fw-semibold">Session Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control bg-dark text-light border-secondary"
-                                   id="name" th:field="*{name}" placeholder="e.g. Code Review Agent"
-                                   th:classappend="${#fields.hasErrors('name')} ? 'is-invalid' : ''"/>
-                            <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="model" class="form-label fw-semibold">Model <span class="text-danger">*</span></label>
-                            <select class="form-select bg-dark text-light border-secondary" id="model" th:field="*{model}">
-                                <option th:each="m : ${models}"
-                                        th:value="${m.id}"
-                                        th:text="${m.name} + ' (' + ${m.id} + ')'"
-                                        th:selected="${m.id == 'gpt-4.1'}">Model</option>
-                                <!-- Fallback if models haven't loaded -->
-                                <option th:if="${models.empty}" value="gpt-4.1">gpt-4.1 (default)</option>
-                                <option th:if="${models.empty}" value="claude-sonnet-4">claude-sonnet-4</option>
-                                <option th:if="${models.empty}" value="o3-mini">o3-mini</option>
-                            </select>
-                            <div class="invalid-feedback" th:if="${#fields.hasErrors('model')}" th:errors="*{model}"></div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="workingDirectory" class="form-label fw-semibold">
-                                Working Directory
-                                <span class="text-secondary fw-normal">(optional)</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-dark border-secondary text-secondary">
-                                    <i class="bi bi-folder2-open"></i>
-                                </span>
-                                <input type="text" class="form-control bg-dark text-light border-secondary font-monospace"
-                                       id="workingDirectory" th:field="*{workingDirectory}"
-                                       placeholder="/path/to/your/project"/>
-                            </div>
-                            <div class="form-text text-secondary">
-                                The folder the agent will work in. Leave empty to use the Copilot CLI default.
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="systemPrompt" class="form-label fw-semibold">System Prompt
-                                <span class="text-secondary fw-normal">(optional)</span>
-                            </label>
-                            <textarea class="form-control bg-dark text-light border-secondary font-monospace"
-                                      id="systemPrompt" th:field="*{systemPrompt}"
-                                      rows="4" placeholder="Additional instructions appended to the default system prompt..."></textarea>
-                        </div>
-
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="streaming"
-                                       th:field="*{streaming}" role="switch"/>
-                                <label class="form-check-label fw-semibold" for="streaming">
-                                    Enable Streaming
-                                    <small class="text-secondary fw-normal ms-1">— receive response chunks in real time</small>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-play-circle me-1"></i>Create Session
+                        <div class="d-flex flex-column gap-2" id="agent-picker" th:if="${!availableAgents.empty}">
+                            <button type="button"
+                                    class="btn btn-outline-secondary btn-sm text-start agent-pick-btn"
+                                    data-agent-name=""
+                                    th:classappend="${selectedAgentName == null or selectedAgentName.isBlank()} ? ' agent-pick-btn-selected' : ''">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <span class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-broadcast-pin"></i>
+                                        <span>Default Copilot</span>
+                                    </span>
+                                    <small class="font-monospace opacity-75">no custom agent</small>
+                                </div>
+                                <small class="text-secondary d-block mt-2">
+                                    Launch with no custom agent selected and use the base Copilot behavior.
+                                </small>
                             </button>
-                            <a th:href="@{/sessions}" class="btn btn-outline-secondary">Cancel</a>
+
+                            <button type="button"
+                                    class="btn btn-outline-secondary btn-sm text-start agent-pick-btn"
+                                    th:each="agent : ${availableAgents}"
+                                    th:attr="data-agent-name=${agent.name}"
+                                    th:classappend="${agent.name == selectedAgentName} ? ' agent-pick-btn-selected' : ''">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <span class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-stars"></i>
+                                        <span th:text="${agent.displayName}">Agent</span>
+                                    </span>
+                                    <small class="font-monospace opacity-75" th:text="${agent.name}">agent-name</small>
+                                </div>
+                                <small class="text-secondary d-block mt-2" th:text="${agent.description}">description</small>
+                            </button>
                         </div>
-                    </form>
+
+                        <div th:if="${availableAgents.empty}" class="dashboard-empty-state text-center text-secondary py-4 px-3">
+                            <i class="bi bi-radioactive fs-3 d-block mb-2"></i>
+                            <p class="mb-0 small">
+                                No runtime-discovered custom agents are available right now. You can still launch a default Copilot session.
+                            </p>
+                        </div>
+
+                        <a th:href="@{/agents}" class="btn btn-outline-secondary w-100 mt-3">
+                            <i class="bi bi-radar me-1"></i>Inspect Runtime Catalog
+                        </a>
+                    </div>
+
+                    <div class="panel-surface-soft p-4">
+                        <p class="page-kicker mb-2">
+                            <i class="bi bi-lightning"></i>Launch Notes
+                        </p>
+                        <ul class="text-secondary small mb-0 ps-3">
+                            <li class="mb-2">Use a strong session name so runs are easy to find later.</li>
+                            <li class="mb-2">A selected custom agent is applied through the SDK as part of session startup.</li>
+                            <li>Enable streaming when you want the live, token-by-token experience.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="composer-form-card">
+                        <div class="card-body p-4 p-xl-5">
+                            <form th:action="@{/sessions}" method="post" th:object="${createRequest}">
+                                <input type="hidden" id="agentName" th:field="*{agentName}"/>
+
+                                <div class="mb-4">
+                                    <label for="name" class="form-label fw-semibold">Session Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control bg-dark text-light border-secondary"
+                                           id="name" th:field="*{name}" placeholder="e.g. Batch Job Forensics"
+                                           th:classappend="${#fields.hasErrors('name')} ? 'is-invalid' : ''"/>
+                                    <div class="form-text text-secondary">Give this run a memorable name so it is easy to reopen from the fleet.</div>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                                </div>
+
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <label for="model" class="form-label fw-semibold">Model <span class="text-danger">*</span></label>
+                                        <select class="form-select bg-dark text-light border-secondary" id="model" th:field="*{model}">
+                                            <option th:each="m : ${models}"
+                                                    th:value="${m.id}"
+                                                    th:text="${m.name} + ' (' + ${m.id} + ')'"
+                                                    th:selected="${m.id == 'gpt-4.1'}">Model</option>
+                                            <option th:if="${models.empty}" value="gpt-4.1">gpt-4.1 (default)</option>
+                                            <option th:if="${models.empty}" value="claude-sonnet-4">claude-sonnet-4</option>
+                                            <option th:if="${models.empty}" value="o3-mini">o3-mini</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="workingDirectory" class="form-label fw-semibold">
+                                            Working Directory
+                                            <span class="text-secondary fw-normal">(optional)</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-dark border-secondary text-secondary">
+                                                <i class="bi bi-folder2-open"></i>
+                                            </span>
+                                            <input type="text" class="form-control bg-dark text-light border-secondary font-monospace"
+                                                   id="workingDirectory" th:field="*{workingDirectory}"
+                                                   placeholder="C:\workspace\my-project"/>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="my-4">
+                                    <label for="systemPrompt" class="form-label fw-semibold">System Prompt
+                                        <span class="text-secondary fw-normal">(optional — appended in addition to any custom agent prompt)</span>
+                                    </label>
+                                    <textarea class="form-control bg-dark text-light border-secondary font-monospace"
+                                               id="systemPrompt" th:field="*{systemPrompt}"
+                                               rows="7" placeholder="Additional instructions appended to the default system prompt..."></textarea>
+                                    <div class="form-text text-secondary">Use this to layer mission-specific guidance on top of the runtime-selected custom agent.</div>
+                                </div>
+
+                                <div class="panel-surface-soft p-4 mb-4">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="streaming"
+                                               th:field="*{streaming}" role="switch"/>
+                                        <label class="form-check-label fw-semibold" for="streaming">
+                                            Enable Streaming
+                                            <small class="text-secondary fw-normal ms-1 d-block">Receive response chunks in real time and watch the session wake up token by token.</small>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-play-circle me-1"></i>Create Session
+                                    </button>
+                                    <a th:href="@{/sessions}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <script th:inline="javascript">
+    (function () {
+        const agentInput = document.getElementById('agentName');
+        const pickButtons = document.querySelectorAll('.agent-pick-btn');
+
+        pickButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                pickButtons.forEach(b => b.classList.remove('agent-pick-btn-selected'));
+                btn.classList.add('agent-pick-btn-selected');
+
+                if (agentInput != null) {
+                    agentInput.value = btn.dataset.agentName || '';
+                }
+            });
+        });
+
+        if (pickButtons.length === 0 && agentInput != null) {
+            agentInput.value = '';
+        }
+    })();
+    </script>
 </section>
 </body>
 </html>

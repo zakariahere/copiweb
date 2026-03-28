@@ -12,6 +12,8 @@
             <i class="bi bi-clock-history me-2"></i>History
         </h2>
         <span class="text-secondary" th:text="'— ' + ${agentSession.name}">Session Name</span>
+        <span class="badge bg-dark border border-secondary"
+              th:text="${agentSession.selectedAgentDisplayName != null and !agentSession.selectedAgentDisplayName.isBlank() ? agentSession.selectedAgentDisplayName : 'Default Copilot'}">Default Copilot</span>
         <span class="ms-auto badge bg-dark border border-secondary" th:text="${events.size()} + ' events'">0 events</span>
     </div>
 
