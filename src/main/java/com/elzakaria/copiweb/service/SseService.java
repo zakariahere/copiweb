@@ -15,10 +15,12 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @Slf4j
 public class SseService {
 
+    private static final long SSE_TIMEOUT_MILLIS = 86_400_000L;
+
     private final ConcurrentHashMap<String, CopyOnWriteArraySet<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
     public SseEmitter subscribe(String sdkSessionId) {
-        var emitter = new SseEmitter(300_000L);
+        var emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
         var sessionEmitters = emitters.computeIfAbsent(sdkSessionId, k -> new CopyOnWriteArraySet<>());
         sessionEmitters.add(emitter);
 
@@ -28,11 +30,16 @@ public class SseService {
                 set.remove(emitter);
             }
         };
-        emitter.onTimeout(cleanup);
+        emitter.onTimeout(() -> {
+            log.debug("SSE emitter timed out for session {}", sdkSessionId);
+            cleanup.run();
+            emitter.complete();
+        });
         emitter.onError(e -> cleanup.run());
         emitter.onCompletion(cleanup);
 
-        log.debug("SSE subscriber added for session {}, total={}", sdkSessionId, sessionEmitters.size());
+        log.debug("SSE subscriber added for session {}, total={}, timeoutMs={}",
+            sdkSessionId, sessionEmitters.size(), SSE_TIMEOUT_MILLIS);
         return emitter;
     }
 
