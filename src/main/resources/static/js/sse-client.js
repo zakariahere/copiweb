@@ -59,11 +59,11 @@
 
                 case 'TOOL_START':
                     showToolSection();
-                    addToolCard(event.toolName, event.args, 'running');
+                    addToolCard(event.toolCallId, event.toolName, event.args, 'running');
                     break;
 
                 case 'TOOL_COMPLETE':
-                    updateToolCard(event.toolName, event.result);
+                    updateToolCard(event.toolCallId, event.result);
                     break;
 
                 case 'SUBAGENT_START':
@@ -105,27 +105,27 @@
         if (toolSection) toolSection.style.display = '';
     }
 
-    function addToolCard(toolName, args, state) {
-        if (!toolTimeline || !toolName) return;
-        const id = 'tool-' + toolName.replace(/\W/g, '_') + '-' + Date.now();
+    function addToolCard(toolCallId, toolName, args, state) {
+        if (!toolTimeline || !toolCallId) return;
+        const id = 'tool-' + toolCallId.replace(/\W/g, '_');
         const card = document.createElement('div');
         card.className = 'tool-card mb-1 p-2 rounded border border-warning bg-warning bg-opacity-10 small';
         card.id = id;
         card.innerHTML = `
             <div class="d-flex align-items-center gap-2">
                 <span class="spinner-border spinner-border-sm text-warning tool-spinner" role="status"></span>
-                <span class="fw-semibold text-warning">${escapeHtml(toolName)}</span>
+                <span class="fw-semibold text-warning">${escapeHtml(toolName || toolCallId)}</span>
                 <span class="badge bg-warning text-dark tool-state">running</span>
             </div>
             ${args ? `<pre class="mt-1 mb-0 text-secondary" style="font-size:0.7rem;white-space:pre-wrap;max-height:60px;overflow:auto;">${escapeHtml(args)}</pre>` : ''}
         `;
-        activeToolCards.set(toolName, id);
+        activeToolCards.set(toolCallId, id);
         toolTimeline.appendChild(card);
         toolTimeline.scrollTop = toolTimeline.scrollHeight;
     }
 
-    function updateToolCard(toolName, result) {
-        const id = activeToolCards.get(toolName);
+    function updateToolCard(toolCallId, result) {
+        const id = activeToolCards.get(toolCallId);
         if (!id) return;
         const card = document.getElementById(id);
         if (!card) return;
@@ -140,7 +140,7 @@
             pre.textContent = result;
             card.appendChild(pre);
         }
-        activeToolCards.delete(toolName);
+        activeToolCards.delete(toolCallId);
     }
 
     function appendConsoleEntry(event, extraClass) {

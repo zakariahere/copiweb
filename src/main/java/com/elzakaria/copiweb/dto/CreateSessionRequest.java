@@ -7,6 +7,7 @@ public record CreateSessionRequest(
     @NotBlank String name,
     @NotBlank String model,
     String systemPrompt,
+    String workingDirectory,
     @NotNull Boolean streaming
 ) {
     public @NotNull Boolean streaming() {

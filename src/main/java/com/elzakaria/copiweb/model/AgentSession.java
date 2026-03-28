@@ -32,6 +32,9 @@ public class AgentSession {
     @Column(name = "system_prompt", columnDefinition = "TEXT")
     private String systemPrompt;
 
+    @Column(name = "working_directory")
+    private String workingDirectory;
+
     @Column(nullable = false)
     private boolean streaming = true;
 

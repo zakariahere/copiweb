@@ -45,6 +45,24 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="workingDirectory" class="form-label fw-semibold">
+                                Working Directory
+                                <span class="text-secondary fw-normal">(optional)</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-secondary">
+                                    <i class="bi bi-folder2-open"></i>
+                                </span>
+                                <input type="text" class="form-control bg-dark text-light border-secondary font-monospace"
+                                       id="workingDirectory" th:field="*{workingDirectory}"
+                                       placeholder="/path/to/your/project"/>
+                            </div>
+                            <div class="form-text text-secondary">
+                                The folder the agent will work in. Leave empty to use the Copilot CLI default.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="systemPrompt" class="form-label fw-semibold">System Prompt
                                 <span class="text-secondary fw-normal">(optional)</span>
                             </label>

@@ -21,6 +21,10 @@
         <span class="text-secondary small">
             <i class="bi bi-cpu me-1"></i><span th:text="${agentSession.model}">model</span>
         </span>
+        <span class="text-secondary small font-monospace"
+              th:if="${agentSession.workingDirectory != null and !agentSession.workingDirectory.isBlank()}">
+            <i class="bi bi-folder2-open me-1"></i><span th:text="${agentSession.workingDirectory}">dir</span>
+        </span>
         <div class="ms-auto d-flex gap-2">
             <a th:href="@{/sessions/{id}/history(id=${agentSession.id})}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-clock-history me-1"></i>History

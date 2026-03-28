@@ -61,6 +61,10 @@ public class AgentSessionService {
                 .setContent(req.systemPrompt()));
         }
 
+        if (req.workingDirectory() != null && !req.workingDirectory().isBlank()) {
+            config.setWorkingDirectory(req.workingDirectory());
+        }
+
         // Call SDK first so we have the session_id before any DB write
         var sdkSession = copilotClient.createSession(config).get();
         String sdkId = sdkSession.getSessionId();
@@ -70,6 +74,7 @@ public class AgentSessionService {
         dbSession.setName(req.name());
         dbSession.setModel(req.model());
         dbSession.setSystemPrompt(req.systemPrompt());
+        dbSession.setWorkingDirectory(req.workingDirectory());
         dbSession.setStreaming(req.streaming());
         dbSession.setStatus(SessionStatus.ACTIVE);
         dbSession = sessionRepo.save(dbSession);

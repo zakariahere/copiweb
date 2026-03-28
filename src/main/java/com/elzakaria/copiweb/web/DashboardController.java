@@ -61,7 +61,7 @@ public class DashboardController {
     @GetMapping("/sessions/new")
     public String newSession(Model model) {
         model.addAttribute("models", modelService.getModels());
-        model.addAttribute("createRequest", new CreateSessionRequest("", "gpt-4.1", "", true));
+        model.addAttribute("createRequest", new CreateSessionRequest("", "gpt-4.1", "", "", true));
         return "sessions/new";
     }
 

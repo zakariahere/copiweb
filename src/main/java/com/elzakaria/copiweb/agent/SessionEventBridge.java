@@ -49,8 +49,9 @@ public class SessionEventBridge {
 
         sdkSession.on(ToolExecutionStartEvent.class, evt -> {
             String toolName = evt.getData().toolName();
+            String toolCallId = evt.getData().toolCallId();
             String args = evt.getData().arguments() != null ? evt.getData().arguments().toString() : null;
-            sseService.broadcast(sdkId, EventDto.toolStart(toolName, args, sdkId));
+            sseService.broadcast(sdkId, EventDto.toolStart(toolName, toolCallId, args, sdkId));
             persistEventAsync(dbId, handle, EventType.TOOL_START, "tool", null, toolName, args, null);
         });
 
