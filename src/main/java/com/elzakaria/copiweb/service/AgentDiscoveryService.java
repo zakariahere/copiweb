@@ -10,6 +10,7 @@ import com.github.copilot.sdk.CopilotClient;
 import com.github.copilot.sdk.CopilotSession;
 import com.github.copilot.sdk.json.PermissionHandler;
 import com.github.copilot.sdk.json.SessionConfig;
+import com.github.copilot.sdk.json.ToolDefinition;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,11 +19,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Spliterators;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -38,13 +35,14 @@ public class AgentDiscoveryService {
 
     private final CopilotClient copilotClient;
     private final ModelService modelService;
+    private final List<ToolDefinition> toolDefinitions;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public AgentCatalogView getCatalog() {
         return new AgentCatalogView(
-            listAgents(),
-            listInstalledPlugins(),
-            listMarketplaces()
+                listAgents(),
+                listInstalledPlugins(),
+                listMarketplaces()
         );
     }
 
@@ -54,9 +52,10 @@ public class AgentDiscoveryService {
 
         try {
             var config = new SessionConfig()
-                .setModel(resolveDiscoveryModel())
-                .setStreaming(false)
-                .setOnPermissionRequest(PermissionHandler.APPROVE_ALL);
+                    .setModel(resolveDiscoveryModel())
+                    .setStreaming(false)
+                    .setTools(this.toolDefinitions)
+                    .setOnPermissionRequest(PermissionHandler.APPROVE_ALL);
 
             probeSession = copilotClient.createSession(config).get(30, TimeUnit.SECONDS);
             probeSessionId = probeSession.getSessionId();
@@ -72,16 +71,16 @@ public class AgentDiscoveryService {
             final String currentSelectedAgentName = selectedAgentName;
 
             return agents.stream()
-                .map(agent -> new DiscoveredAgentView(
-                    agent.getName(),
-                    defaultString(agent.getDisplayName(), agent.getName()),
-                    defaultString(agent.getDescription(), "Detected from the local Copilot runtime."),
-                    agent.getName() != null && agent.getName().equals(currentSelectedAgentName)
-                ))
-                .sorted(Comparator
-                    .comparing(DiscoveredAgentView::selected).reversed()
-                    .thenComparing(DiscoveredAgentView::displayName, String.CASE_INSENSITIVE_ORDER))
-                .toList();
+                    .map(agent -> new DiscoveredAgentView(
+                            agent.getName(),
+                            defaultString(agent.getDisplayName(), agent.getName()),
+                            defaultString(agent.getDescription(), "Detected from the local Copilot runtime."),
+                            agent.getName() != null && agent.getName().equals(currentSelectedAgentName)
+                    ))
+                    .sorted(Comparator
+                            .comparing(DiscoveredAgentView::selected).reversed()
+                            .thenComparing(DiscoveredAgentView::displayName, String.CASE_INSENSITIVE_ORDER))
+                    .toList();
         } catch (Exception e) {
             log.warn("Failed to discover custom agents from Copilot runtime: {}", e.getMessage());
             return List.of();
@@ -111,13 +110,13 @@ public class AgentDiscoveryService {
 
         try (Stream<Path> manifests = Files.walk(pluginsRoot, 4)) {
             return manifests
-                .filter(path -> path.getFileName().toString().equals("plugin.json"))
-                .map(path -> readInstalledPlugin(path, pluginsRoot))
-                .flatMap(Optional::stream)
-                .sorted(Comparator
-                    .comparing(InstalledPluginView::source, String.CASE_INSENSITIVE_ORDER)
-                    .thenComparing(InstalledPluginView::name, String.CASE_INSENSITIVE_ORDER))
-                .toList();
+                    .filter(path -> path.getFileName().toString().equals("plugin.json"))
+                    .map(path -> readInstalledPlugin(path, pluginsRoot))
+                    .flatMap(Optional::stream)
+                    .sorted(Comparator
+                            .comparing(InstalledPluginView::source, String.CASE_INSENSITIVE_ORDER)
+                            .thenComparing(InstalledPluginView::name, String.CASE_INSENSITIVE_ORDER))
+                    .toList();
         } catch (IOException e) {
             log.warn("Failed to inspect installed Copilot plugins under {}: {}", pluginsRoot, e.getMessage());
             return List.of();
@@ -134,15 +133,15 @@ public class AgentDiscoveryService {
             boolean hasAgentFiles = declaresAgents && hasAgentFiles(pluginRoot, declaredAgentsPath);
 
             return Optional.of(new InstalledPluginView(
-                defaultString(textValue(manifest.get("name")), pluginRoot.getFileName().toString()),
-                defaultString(textValue(manifest.get("description")), "Installed Copilot plugin."),
-                defaultString(textValue(manifest.get("version")), "unknown"),
-                determinePluginSource(manifestPath, pluginsRoot),
-                declaresAgents,
-                hasAgentFiles,
-                hasNonBlankValue(manifest.get("skills")),
-                hasNonBlankValue(manifest.get("hooks")),
-                hasNonBlankValue(manifest.get("mcpServers"))
+                    defaultString(textValue(manifest.get("name")), pluginRoot.getFileName().toString()),
+                    defaultString(textValue(manifest.get("description")), "Installed Copilot plugin."),
+                    defaultString(textValue(manifest.get("version")), "unknown"),
+                    determinePluginSource(manifestPath, pluginsRoot),
+                    declaresAgents,
+                    hasAgentFiles,
+                    hasNonBlankValue(manifest.get("skills")),
+                    hasNonBlankValue(manifest.get("hooks")),
+                    hasNonBlankValue(manifest.get("mcpServers"))
             ));
         } catch (IOException e) {
             log.warn("Failed to read plugin manifest {}: {}", manifestPath, e.getMessage());
@@ -200,18 +199,18 @@ public class AgentDiscoveryService {
         }
 
         return marketplaces.stream()
-            .sorted(Comparator
-                .comparing(RegisteredMarketplaceView::builtIn).reversed()
-                .thenComparing(RegisteredMarketplaceView::name, String.CASE_INSENSITIVE_ORDER))
-            .toList();
+                .sorted(Comparator
+                        .comparing(RegisteredMarketplaceView::builtIn).reversed()
+                        .thenComparing(RegisteredMarketplaceView::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     private String resolveDiscoveryModel() {
         return modelService.getModels().stream()
-            .map(model -> model.getId())
-            .filter(modelId -> modelId != null && !modelId.isBlank())
-            .findFirst()
-            .orElse(FALLBACK_MODEL);
+                .map(model -> model.getId())
+                .filter(modelId -> modelId != null && !modelId.isBlank())
+                .findFirst()
+                .orElse(FALLBACK_MODEL);
     }
 
     private Path getInstalledPluginsRoot() {
@@ -259,8 +258,8 @@ public class AgentDiscoveryService {
         command.addAll(List.of(args));
 
         Process process = new ProcessBuilder(command)
-            .redirectErrorStream(true)
-            .start();
+                .redirectErrorStream(true)
+                .start();
 
         String output;
         try (var input = process.getInputStream()) {

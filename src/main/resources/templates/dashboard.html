@@ -149,6 +149,61 @@
                 </div>
             </div>
         </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="dashboard-vital-card card border-0 h-100" style="background: linear-gradient(135deg, rgba(111,66,193,0.18) 0%, rgba(111,66,193,0.05) 100%); border-left: 3px solid #6f42c1 !important;">
+                <div class="card-body">
+                    <p class="dashboard-micro-label mb-2">Registered Tools</p>
+                    <div class="d-flex align-items-end justify-content-between">
+                        <div>
+                            <h2 class="mb-0" th:text="${toolCount}">0</h2>
+                            <small class="text-secondary">custom tools loaded</small>
+                        </div>
+                        <i class="bi bi-tools fs-1" style="color: #6f42c1; opacity: 0.6;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="dashboard-section-card card border-0">
+                <div class="card-header border-0 d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="dashboard-micro-label mb-1">Tool Registry</p>
+                        <h4 class="mb-0">Registered custom tools</h4>
+                    </div>
+                    <span class="badge bg-secondary" th:text="${toolCount} + ' loaded'">0 loaded</span>
+                </div>
+                <div class="card-body pt-0">
+                    <div th:if="${registeredTools.empty}" class="dashboard-empty-state text-center py-4">
+                        <i class="bi bi-tools fs-1 d-block mb-3 text-secondary"></i>
+                        <h5 class="mb-2">No tools registered.</h5>
+                        <p class="text-secondary small mb-0">Add <code>@Bean ToolDefinition</code> methods to a <code>@Configuration</code> class to expose tools to agent sessions.</p>
+                    </div>
+                    <div th:unless="${registeredTools.empty}" class="row g-3">
+                        <div class="col-sm-6 col-xl-4" th:each="tool : ${registeredTools}">
+                            <div class="card border-0 h-100" style="background: rgba(255,255,255,0.04);">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                                        <code class="fs-6 text-warning" th:text="${tool.name}">tool_name</code>
+                                        <div class="d-flex gap-1 flex-shrink-0">
+                                            <span th:if="${tool.overridesBuiltin}" class="badge bg-danger" title="Overrides a built-in tool">override</span>
+                                            <span th:if="${tool.skipPermission}" class="badge bg-warning text-dark" title="Skips permission request">no-perm</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-secondary small mb-2" th:text="${tool.description}">description</p>
+                                    <small class="text-secondary">
+                                        <i class="bi bi-braces me-1"></i>
+                                        <span th:text="${tool.parameterCount == 0 ? 'No parameters' : tool.parameterCount + ' parameter' + (tool.parameterCount > 1 ? 's' : '')}">0 parameters</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row g-4">
