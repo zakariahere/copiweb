@@ -78,6 +78,15 @@
                     appendConsoleEntry(event, 'subagent-complete');
                     break;
 
+                case 'A2A_SEND':
+                    appendConsoleEntry(event, 'a2a-send');
+                    break;
+
+                case 'A2A_RECEIVE':
+                    appendConsoleEntry(event, 'a2a-receive');
+                    appendA2ANotification(event);
+                    break;
+
                 case 'SESSION_ERROR':
                     setStatus('error');
                     window.enableInput && window.enableInput();
@@ -165,6 +174,8 @@
             'SESSION_ERROR': 'text-danger',
             'SUBAGENT_START': 'text-primary',
             'SUBAGENT_COMPLETE': 'text-primary',
+            'A2A_SEND': 'text-info',
+            'A2A_RECEIVE': 'text-info',
             'IDLE': 'text-secondary',
             'ABORT': 'text-danger',
         }[event.type] || 'text-secondary';
@@ -191,6 +202,14 @@
         const banner = document.createElement('div');
         banner.className = 'alert alert-danger alert-dismissible mt-2 session-stream-error-banner';
         banner.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i>${escapeHtml(message || 'An error occurred.')}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        const streamCard = streamOutput?.closest('.card');
+        if (streamCard) streamCard.after(banner);
+    }
+
+    function appendA2ANotification(event) {
+        const banner = document.createElement('div');
+        banner.className = 'alert alert-info alert-dismissible py-1 mt-1 small';
+        banner.innerHTML = `<i class="bi bi-diagram-3 me-1"></i>A2A message received from session ${escapeHtml(event.args || 'unknown')}<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>`;
         const streamCard = streamOutput?.closest('.card');
         if (streamCard) streamCard.after(banner);
     }

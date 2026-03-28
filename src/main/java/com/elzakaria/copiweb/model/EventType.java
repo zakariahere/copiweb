@@ -8,6 +8,8 @@ public enum EventType {
     TOOL_COMPLETE,
     SUBAGENT_START,
     SUBAGENT_COMPLETE,
+    A2A_SEND,
+    A2A_RECEIVE,
     SESSION_ERROR,
     IDLE,
     ABORT

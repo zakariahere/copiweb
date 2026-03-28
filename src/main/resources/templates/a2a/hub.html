@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout('A2A Hub', ~{::section})}">
+<body>
+<section>
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-diagram-3 text-primary me-2"></i>A2A Communication Hub
+        </h2>
+        <span class="badge bg-secondary" th:text="${agents.size()} + ' agent(s) online'">0 agents</span>
+        <span class="badge bg-warning text-dark" th:if="${pendingCount > 0}"
+              th:text="${pendingCount} + ' pending'">0 pending</span>
+    </div>
+
+    <!-- Agent Network Grid -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-broadcast me-2"></i>Agent Network</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshAgents()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div th:if="${agents.isEmpty()}" class="text-secondary text-center py-4">
+                        <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                        <p class="mt-2 mb-0">No active agents. Create sessions to populate the A2A network.</p>
+                    </div>
+                    <div class="row g-3" th:unless="${agents.isEmpty()}">
+                        <div class="col-md-4 col-lg-3" th:each="agent : ${agents}">
+                            <div class="card bg-dark border-secondary h-100 agent-card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <i class="bi bi-circle-fill"
+                                           th:classappend="${agent.status().name() == 'ACTIVE'} ? 'text-success' : 'text-warning'"
+                                           style="font-size:0.5rem;"></i>
+                                        <strong th:text="${agent.name()}" class="text-truncate">Agent</strong>
+                                    </div>
+                                    <div class="small text-secondary mb-1">
+                                        <i class="bi bi-cpu me-1"></i>
+                                        <span th:text="${agent.model()}">model</span>
+                                    </div>
+                                    <div class="small text-secondary mb-2" th:if="${agent.agentDisplayName() != null}">
+                                        <i class="bi bi-person me-1"></i>
+                                        <span th:text="${agent.agentDisplayName()}">agent</span>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        <span class="badge bg-secondary" style="font-size:0.65rem;"
+                                              th:each="cap : ${agent.capabilities()}"
+                                              th:text="${cap}">cap</span>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-primary flex-fill"
+                                                th:data-session-id="${agent.sessionId()}"
+                                                onclick="openSendModal(this)">
+                                            <i class="bi bi-send me-1"></i>Send
+                                        </button>
+                                        <a class="btn btn-sm btn-outline-secondary"
+                                           th:href="@{'/sessions/' + ${agent.sessionId()}}">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Message + Recent Messages -->
+    <div class="row g-3">
+        <!-- Send Message Panel -->
+        <div class="col-lg-5">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header">
+                    <i class="bi bi-envelope-arrow-up me-2"></i>Send A2A Message
+                </div>
+                <div class="card-body">
+                    <form id="a2aSendForm" onsubmit="sendA2AMessage(event)">
+                        <div class="mb-3">
+                            <label for="senderSelect" class="form-label small text-secondary">From (sender)</label>
+                            <select id="senderSelect" class="form-select form-select-sm bg-dark text-light border-secondary" required>
+                                <option value="">Select sender…</option>
+                                <option th:each="agent : ${agents}"
+                                        th:value="${agent.sessionId()}"
+                                        th:text="${agent.name() + ' (' + agent.model() + ')'}">Agent</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="receiverSelect" class="form-label small text-secondary">To (receiver — leave empty for broadcast)</label>
+                            <select id="receiverSelect" class="form-select form-select-sm bg-dark text-light border-secondary">
+                                <option value="">Broadcast to all</option>
+                                <option th:each="agent : ${agents}"
+                                        th:value="${agent.sessionId()}"
+                                        th:text="${agent.name() + ' (' + agent.model() + ')'}">Agent</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="msgType" class="form-label small text-secondary">Message type</label>
+                            <select id="msgType" class="form-select form-select-sm bg-dark text-light border-secondary">
+                                <option value="TASK_REQUEST">Task Request</option>
+                                <option value="TASK_RESPONSE">Task Response</option>
+                                <option value="DISCOVERY">Discovery</option>
+                                <option value="BROADCAST">Broadcast</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="msgPayload" class="form-label small text-secondary">Payload</label>
+                            <textarea id="msgPayload" class="form-control form-control-sm bg-dark text-light border-secondary"
+                                      rows="4" required placeholder="Enter message payload…"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-send me-1"></i>Route Message
+                        </button>
+                    </form>
+                    <div id="sendResult" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Messages -->
+        <div class="col-lg-7">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-clock-history me-2"></i>Recent A2A Messages</span>
+                    <span class="badge bg-secondary" th:text="${recentMessages.size()}">0</span>
+                </div>
+                <div class="card-body p-0">
+                    <div th:if="${recentMessages.isEmpty()}" class="text-secondary text-center py-4">
+                        <p class="mb-0">No A2A messages yet.</p>
+                    </div>
+                    <div class="list-group list-group-flush" th:unless="${recentMessages.isEmpty()}">
+                        <div class="list-group-item bg-dark border-secondary"
+                             th:each="msg : ${recentMessages}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="badge me-1"
+                                          th:classappend="${msg.messageType() == 'BROADCAST'} ? 'bg-info' :
+                                                          (${msg.messageType() == 'TASK_REQUEST'} ? 'bg-primary' :
+                                                          (${msg.messageType() == 'TASK_RESPONSE'} ? 'bg-success' : 'bg-secondary'))"
+                                          th:text="${msg.messageType()}">TYPE</span>
+                                    <strong th:text="${msg.senderName()}">sender</strong>
+                                    <i class="bi bi-arrow-right mx-1 text-secondary"></i>
+                                    <span th:text="${msg.receiverName() != null ? msg.receiverName() : 'ALL'}"
+                                          class="text-secondary">receiver</span>
+                                </div>
+                                <div>
+                                    <span class="badge"
+                                          th:classappend="${msg.status() == 'DELIVERED'} ? 'bg-success' : 'bg-warning text-dark'"
+                                          th:text="${msg.status()}">STATUS</span>
+                                </div>
+                            </div>
+                            <p class="mb-0 mt-1 small text-light text-truncate" style="max-width:500px;"
+                               th:text="${msg.payload()}">payload</p>
+                            <small class="text-secondary"
+                                   th:text="${#temporals.format(msg.createdAt(), 'MMM dd HH:mm:ss')}">time</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+<script th:inline="javascript">
+    function refreshAgents() {
+        window.location.reload();
+    }
+
+    function openSendModal(button) {
+        const sessionId = button.getAttribute('data-session-id');
+        document.getElementById('receiverSelect').value = sessionId;
+        document.getElementById('msgPayload').focus();
+    }
+
+    function sendA2AMessage(event) {
+        event.preventDefault();
+        const senderId = document.getElementById('senderSelect').value;
+        const receiverId = document.getElementById('receiverSelect').value || null;
+        const msgType = document.getElementById('msgType').value;
+        const payload = document.getElementById('msgPayload').value;
+        const resultDiv = document.getElementById('sendResult');
+
+        if (!senderId) {
+            resultDiv.innerHTML = '<div class="alert alert-warning alert-sm py-1 small">Select a sender.</div>';
+            return;
+        }
+
+        fetch('/api/a2a/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                senderSessionId: parseInt(senderId),
+                receiverSessionId: receiverId ? parseInt(receiverId) : null,
+                payload: payload,
+                messageType: msgType
+            })
+        })
+        .then(resp => {
+            if (!resp.ok) throw new Error('Send failed: ' + resp.status);
+            return resp.json();
+        })
+        .then(envelope => {
+            resultDiv.innerHTML = '<div class="alert alert-success alert-sm py-1 small">'
+                + '<i class="bi bi-check-circle me-1"></i>Message routed: ' + envelope.messageId + '</div>';
+            document.getElementById('msgPayload').value = '';
+            setTimeout(() => window.location.reload(), 1500);
+        })
+        .catch(err => {
+            resultDiv.innerHTML = '<div class="alert alert-danger alert-sm py-1 small">' + err.message + '</div>';
+        });
+    }
+</script>
+</body>
+</html>
