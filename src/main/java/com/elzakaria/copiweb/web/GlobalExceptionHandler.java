@@ -11,6 +11,7 @@ import org.springframework.web.context.request.async.AsyncRequestTimeoutExceptio
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Map;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -59,11 +60,42 @@ public class GlobalExceptionHandler {
             jakarta.servlet.http.HttpServletResponse response) {
         if (response.isCommitted()) {
             // SSE or streaming response already started — don't try to write again
-            log.warn("Exception after response committed: {}", ex.getMessage());
+            if (isExpectedClientDisconnect(ex)) {
+                log.debug("Client disconnected from streaming response: {}", ex.getMessage());
+            } else {
+                log.warn("Exception after response committed: {}", ex.getMessage());
+            }
             return null;
         }
         log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Internal server error"));
+    }
+
+    static boolean isExpectedClientDisconnect(Throwable throwable) {
+        var current = throwable;
+        while (current != null) {
+            var simpleName = current.getClass().getSimpleName();
+            if ("AsyncRequestNotUsableException".equals(simpleName)
+                    || "ClientAbortException".equals(simpleName)
+                    || "EOFException".equals(simpleName)) {
+                return true;
+            }
+
+            var message = current.getMessage();
+            if (message != null) {
+                var normalized = message.toLowerCase(Locale.ROOT);
+                if (normalized.contains("disconnected client")
+                        || normalized.contains("broken pipe")
+                        || normalized.contains("connection reset by peer")
+                        || normalized.contains("connection aborted")
+                        || normalized.contains("an established connection was aborted")
+                        || normalized.contains("forcibly closed by the remote host")) {
+                    return true;
+                }
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
