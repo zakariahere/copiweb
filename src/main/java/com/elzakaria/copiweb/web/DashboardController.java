@@ -1,9 +1,11 @@
 package com.elzakaria.copiweb.web;
 
 import com.elzakaria.copiweb.dto.CreateSessionRequest;
+import com.elzakaria.copiweb.dto.DiscoveredAgentView;
 import com.elzakaria.copiweb.model.SessionStatus;
 import com.elzakaria.copiweb.repository.AgentEventRepository;
 import com.elzakaria.copiweb.repository.AgentSessionRepository;
+import com.elzakaria.copiweb.service.AgentDiscoveryService;
 import com.elzakaria.copiweb.service.AgentSessionService;
 import com.elzakaria.copiweb.service.ModelService;
 import jakarta.validation.Valid;
@@ -27,6 +29,7 @@ public class DashboardController {
     private final AgentSessionRepository sessionRepo;
     private final AgentEventRepository eventRepo;
     private final ModelService modelService;
+    private final AgentDiscoveryService agentDiscoveryService;
 
     @GetMapping("/")
     public String index() {
@@ -42,6 +45,7 @@ public class DashboardController {
         long errorsToday = sessionRepo.countByStatus(SessionStatus.ERROR);
         var recentActivity = eventRepo.findRecentEventsAcrossAllSessions(LocalDateTime.now().minusHours(24));
         var recentSessions = sessionRepo.findTop10ByOrderByLastActiveAtDesc();
+        var spotlightSession = recentSessions.isEmpty() ? null : recentSessions.getFirst();
 
         model.addAttribute("activeSessions", activeSessions);
         model.addAttribute("totalSessions", totalSessions);
@@ -49,6 +53,7 @@ public class DashboardController {
         model.addAttribute("errorsToday", errorsToday);
         model.addAttribute("recentActivity", recentActivity);
         model.addAttribute("recentSessions", recentSessions);
+        model.addAttribute("spotlightSession", spotlightSession);
         return "dashboard";
     }
 
@@ -59,9 +64,14 @@ public class DashboardController {
     }
 
     @GetMapping("/sessions/new")
-    public String newSession(Model model) {
+    public String newSession(@RequestParam(name = "agent", required = false) String agentName, Model model) {
+        var availableAgents = agentDiscoveryService.listAgents();
+        String selectedAgentName = resolveSelectedAgentName(agentName, availableAgents);
+
         model.addAttribute("models", modelService.getModels());
-        model.addAttribute("createRequest", new CreateSessionRequest("", "gpt-4.1", "", "", true));
+        model.addAttribute("availableAgents", availableAgents);
+        model.addAttribute("createRequest", new CreateSessionRequest("", defaultModelId(), "", "", true, selectedAgentName));
+        model.addAttribute("selectedAgentName", selectedAgentName);
         return "sessions/new";
     }
 
@@ -71,7 +81,7 @@ public class DashboardController {
                                 Model model,
                                 RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
-            model.addAttribute("models", modelService.getModels());
+            populateSessionComposerModel(model, req.agentName());
             return "sessions/new";
         }
         try {
@@ -80,7 +90,7 @@ public class DashboardController {
             return "redirect:/sessions/" + session.getId();
         } catch (Exception e) {
             log.error("Failed to create session", e);
-            model.addAttribute("models", modelService.getModels());
+            populateSessionComposerModel(model, req.agentName());
             model.addAttribute("error", "Failed to create session: " + e.getMessage());
             return "sessions/new";
         }
@@ -126,5 +136,35 @@ public class DashboardController {
             redirectAttrs.addFlashAttribute("error", "Failed to delete: " + e.getMessage());
         }
         return "redirect:/sessions";
+    }
+
+    private void populateSessionComposerModel(Model model, String requestedAgentName) {
+        model.addAttribute("models", modelService.getModels());
+        model.addAttribute("availableAgents", agentDiscoveryService.listAgents());
+        model.addAttribute("selectedAgentName", requestedAgentName);
+    }
+
+    private String resolveSelectedAgentName(String requestedAgentName, List<DiscoveredAgentView> availableAgents) {
+        if (requestedAgentName != null && !requestedAgentName.isBlank()) {
+            return availableAgents.stream()
+                .filter(agent -> agent.name().equals(requestedAgentName))
+                .map(DiscoveredAgentView::name)
+                .findFirst()
+                .orElse(null);
+        }
+
+        return availableAgents.stream()
+            .filter(DiscoveredAgentView::selected)
+            .map(DiscoveredAgentView::name)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private String defaultModelId() {
+        return modelService.getModels().stream()
+            .map(model -> model.getId())
+            .filter(modelId -> modelId != null && !modelId.isBlank())
+            .findFirst()
+            .orElse("gpt-4.1");
     }
 }

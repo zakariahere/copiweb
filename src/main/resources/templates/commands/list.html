@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::title}, ~{::section})}">
+<head><title>Workflow Commands</title></head>
+<body>
+<section>
+    <div class="page-hero card border-0 mb-4">
+        <div class="card-body page-hero-body p-4 p-xl-5">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-4">
+                <div>
+                    <p class="page-kicker mb-2">
+                        <i class="bi bi-lightning"></i>Workflow Library
+                    </p>
+                    <h1 class="display-6 fw-semibold mb-3">Prompt workflows that launch like operator macros.</h1>
+                    <p class="page-subtitle mb-4">
+                        Each command packages reusable intent and parameter slots so you can move from idea to action faster with whatever runtime agent you choose.
+                    </p>
+                    <div class="page-stat-strip">
+                        <span class="page-stat-chip">
+                            <i class="bi bi-command"></i>
+                            <span th:text="${commands.size()} + ' workflows ready'">0 workflows ready</span>
+                        </span>
+                        <span class="page-stat-chip">
+                            <i class="bi bi-keyboard"></i>
+                            <span>Trigger inside chat with <kbd>/</kbd></span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a th:href="@{/sessions/new}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-play-circle me-1"></i>Open Session
+                    </a>
+                    <a th:href="@{/agents}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-people me-1"></i>Browse Runtime Agents
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6 col-xl-4" th:each="cmd : ${commands}">
+            <div class="command-card h-100 p-4">
+                <div class="d-flex flex-column gap-3 h-100">
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fs-5 text-warning"><i th:classappend="${cmd.icon}"></i></span>
+                            <div>
+                                <h6 class="mb-0 fw-semibold" th:text="${cmd.label}">Label</h6>
+                                <code class="text-secondary small" th:text="'/' + ${cmd.name}">/command</code>
+                            </div>
+                        </div>
+                        <span class="badge bg-dark border border-secondary small" th:if="${cmd.builtIn}">built-in</span>
+                    </div>
+
+                    <p class="text-secondary small mb-0 flex-grow-1" th:text="${cmd.description}">description</p>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="dashboard-chip">
+                            <i class="bi bi-terminal"></i>
+                            <span th:text="'/' + ${cmd.name}">/command</span>
+                        </span>
+                        <span class="dashboard-chip" th:if="${cmd.builtIn}">
+                            <i class="bi bi-stars"></i>
+                            <span>Built-in</span>
+                        </span>
+                    </div>
+                    <!-- Params preview -->
+                    <div th:if="${cmd.paramSchema != null and !cmd.paramSchema.isBlank()}"
+                         class="d-flex flex-wrap gap-1">
+                        <small class="text-secondary w-100">Parameters:</small>
+                        <!-- JS will render params from JSON; show placeholder -->
+                        <code class="text-secondary small param-preview" th:attr="data-schema=${cmd.paramSchema}">
+                            loading...
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Render param names from JSON schema
+    document.querySelectorAll('.param-preview').forEach(el => {
+        try {
+            const schema = JSON.parse(el.dataset.schema);
+            el.textContent = schema.map(p => '{{' + p.name + '}}').join(', ');
+        } catch { el.textContent = ''; }
+    });
+    </script>
+</section>
+</body>
+</html>

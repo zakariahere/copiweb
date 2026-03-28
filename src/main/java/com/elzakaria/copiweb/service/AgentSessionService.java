@@ -68,6 +68,7 @@ public class AgentSessionService {
         // Call SDK first so we have the session_id before any DB write
         var sdkSession = copilotClient.createSession(config).get();
         String sdkId = sdkSession.getSessionId();
+        AgentInfo selectedAgent = applyAgentSelection(sdkSession, req.agentName(), sdkId);
 
         var dbSession = new AgentSession();
         dbSession.setSessionId(sdkId);
@@ -75,6 +76,7 @@ public class AgentSessionService {
         dbSession.setModel(req.model());
         dbSession.setSystemPrompt(req.systemPrompt());
         dbSession.setWorkingDirectory(req.workingDirectory());
+        updateSelectedAgent(dbSession, selectedAgent);
         dbSession.setStreaming(req.streaming());
         dbSession.setStatus(SessionStatus.ACTIVE);
         dbSession = sessionRepo.save(dbSession);
@@ -97,6 +99,7 @@ public class AgentSessionService {
             new ResumeSessionConfig().setModel(dbSession.getModel())
         ).get();
 
+        updateSelectedAgent(dbSession, getCurrentAgent(sdkSession, dbSession.getSessionId()));
         dbSession.setStatus(SessionStatus.ACTIVE);
         dbSession = sessionRepo.save(dbSession);
 
@@ -143,19 +146,20 @@ public class AgentSessionService {
         var dbSession = sessionRepo.findById(dbId)
             .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
 
-        registry.findByDbSessionId(dbId).ifPresent(handle -> {
-            try {
-                copilotClient.deleteSession(handle.sdkSessionId()).get();
-            } catch (Exception e) {
-                log.warn("SDK delete failed for session {}: {}", dbId, e.getMessage());
-            }
-            registry.remove(handle.sdkSessionId());
-            sseService.removeAll(handle.sdkSessionId());
-        });
+        String sdkSessionId = dbSession.getSessionId();
 
-        dbSession.setStatus(SessionStatus.CLOSED);
-        sessionRepo.save(dbSession);
-        log.info("Deleted session dbId={}", dbId);
+        try {
+            copilotClient.deleteSession(sdkSessionId).get();
+        } catch (Exception e) {
+            log.warn("SDK delete failed for session {} (sdkId={}): {}", dbId, sdkSessionId, e.getMessage());
+        }
+
+        registry.remove(sdkSessionId);
+        sseService.removeAll(sdkSessionId);
+
+        sessionRepo.delete(dbSession);
+        sessionRepo.flush();
+        log.info("Deleted session dbId={} sdkId={}", dbId, sdkSessionId);
     }
 
     public List<AgentSession> listSessions() {
@@ -177,5 +181,44 @@ public class AgentSessionService {
         var events = eventRepo.findRecentBySession(session, limit);
         // Return in ascending order for display
         return events.reversed();
+    }
+
+    private AgentInfo applyAgentSelection(CopilotSession sdkSession, String agentName, String sdkSessionId) throws Exception {
+        if (agentName != null && !agentName.isBlank()) {
+            var selectedAgent = sdkSession.selectAgent(agentName.trim()).get();
+            log.info("Selected custom agent '{}' for sdkSession={}", selectedAgent.getName(), sdkSessionId);
+            return selectedAgent;
+        }
+
+        try {
+            sdkSession.deselectAgent().get();
+        } catch (Exception e) {
+            log.debug("No custom agent to deselect for sdkSession={}: {}", sdkSessionId, e.getMessage());
+        }
+        return null;
+    }
+
+    private AgentInfo getCurrentAgent(CopilotSession sdkSession, String sdkSessionId) {
+        try {
+            return sdkSession.getCurrentAgent().get();
+        } catch (Exception e) {
+            log.debug("No current custom agent for sdkSession={}: {}", sdkSessionId, e.getMessage());
+            return null;
+        }
+    }
+
+    private void updateSelectedAgent(AgentSession dbSession, AgentInfo selectedAgent) {
+        if (selectedAgent == null) {
+            dbSession.setSelectedAgentName(null);
+            dbSession.setSelectedAgentDisplayName(null);
+            return;
+        }
+
+        dbSession.setSelectedAgentName(selectedAgent.getName());
+        dbSession.setSelectedAgentDisplayName(
+            selectedAgent.getDisplayName() != null && !selectedAgent.getDisplayName().isBlank()
+                ? selectedAgent.getDisplayName()
+                : selectedAgent.getName()
+        );
     }
 }

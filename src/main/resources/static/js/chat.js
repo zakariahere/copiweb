@@ -11,8 +11,12 @@
     const abortBtn = document.getElementById('abort-btn');
     const messageInput = document.getElementById('message-input');
     const streamOutput = document.getElementById('stream-output');
-    const toolSection = document.getElementById('tool-section');
+    const streamEmptyState = document.getElementById('stream-empty-state');
     const toolTimeline = document.getElementById('tool-timeline');
+    const eventConsole = document.getElementById('event-console');
+    const defaultPlaceholder = messageInput.placeholder;
+    const toolEmptyStateMarkup =
+        '<div id="tool-empty-state" class="tool-empty-state text-secondary small text-center py-3">No tool activity yet for this turn.</div>';
 
     if (!sendBtn || !messageInput) return;
 
@@ -20,16 +24,23 @@
     const initialStatus = meta.dataset.status;
     if (initialStatus === 'CLOSED') {
         disableInput('Session is closed.');
+    } else if (initialStatus === 'ERROR') {
+        disableInput('Resume the session to continue.');
     }
 
     function sendMessage() {
         const text = messageInput.value.trim();
         if (!text) return;
 
+        removeApiError();
+
         // Clear previous response
         if (streamOutput) streamOutput.textContent = '';
-        if (toolSection) toolSection.style.display = 'none';
-        if (toolTimeline) toolTimeline.innerHTML = '';
+        if (streamEmptyState) {
+            streamEmptyState.textContent = 'Waiting for the agent response...';
+            streamEmptyState.style.display = '';
+        }
+        if (toolTimeline) toolTimeline.innerHTML = toolEmptyStateMarkup;
 
         disableInput();
         window.setStatus && window.setStatus('running');
@@ -68,16 +79,22 @@
     window.enableInput = function () {
         messageInput.disabled = false;
         sendBtn.disabled = false;
-        messageInput.placeholder = 'Send a message to the agent...';
+        messageInput.placeholder = defaultPlaceholder;
         if (abortBtn) abortBtn.style.display = 'none';
         messageInput.focus();
     };
 
-    function appendApiError(message) {
+    function removeApiError() {
         const container = messageInput.closest('.card');
         if (!container) return;
         const existing = container.querySelector('.api-error-banner');
         if (existing) existing.remove();
+    }
+
+    function appendApiError(message) {
+        const container = messageInput.closest('.card');
+        if (!container) return;
+        removeApiError();
         const banner = document.createElement('div');
         banner.className = 'alert alert-danger mt-2 small api-error-banner';
         banner.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>${escapeHtml(message)}`;
@@ -109,8 +126,9 @@
     const clearConsoleBtn = document.getElementById('clear-console-btn');
     if (clearConsoleBtn) {
         clearConsoleBtn.addEventListener('click', () => {
-            const console = document.getElementById('event-console');
-            if (console) console.innerHTML = '';
+            if (eventConsole) {
+                eventConsole.innerHTML = '<div id="event-console-empty" class="text-secondary small text-center py-3">Console cleared for this browser view.</div>';
+            }
         });
     }
 })();
