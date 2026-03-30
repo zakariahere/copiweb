@@ -33,5 +33,7 @@ public interface A2AMessageRepository extends JpaRepository<A2AMessage, Long> {
     @Query("SELECT m FROM A2AMessage m ORDER BY m.createdAt DESC LIMIT :limit")
     List<A2AMessage> findRecent(int limit);
 
+    long deleteBySenderSessionOrReceiverSession(AgentSession senderSession, AgentSession receiverSession);
+
     long countByStatus(A2AMessageStatus status);
 }

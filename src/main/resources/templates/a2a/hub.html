@@ -41,7 +41,7 @@
                                         <strong th:text="${agent.name()}" class="text-truncate">Agent</strong>
                                         <span class="badge"
                                               th:classappend="${agent.routable()} ? 'bg-success' : 'bg-warning text-dark'"
-                                              th:text="${agent.routable()} ? 'Routable' : 'Resume first'">State</span>
+                                              th:text="${agent.routable()} ? 'Routable' : 'Unavailable'">State</span>
                                     </div>
                                     <div class="small text-secondary mb-1">
                                         <i class="bi bi-cpu me-1"></i>
@@ -56,7 +56,9 @@
                                         <span th:text="${agent.agentDisplayName()}">agent</span>
                                     </div>
                                     <div class="small mb-2" th:unless="${agent.routable()}">
-                                        <span class="text-warning">This session exists in the database but is not loaded in the live runtime yet.</span>
+                                        <span class="text-warning">A2A is unavailable while this session is in status </span>
+                                        <span class="text-warning fw-semibold" th:text="${agent.status().name()}">STATUS</span>
+                                        <span class="text-warning">.</span>
                                     </div>
                                     <div class="d-flex flex-wrap gap-1 mb-2">
                                         <span class="badge bg-secondary" style="font-size:0.65rem;"
@@ -67,7 +69,7 @@
                                         <button class="btn btn-sm btn-outline-primary flex-fill"
                                                 th:data-session-id="${agent.sessionId()}"
                                                 th:disabled="${!agent.routable()}"
-                                                th:title="${agent.routable() ? 'Route a message to this session' : 'Resume this session before routing A2A messages'}"
+                                                th:title="${agent.routable() ? 'Route a message to this session' : 'A2A is unavailable for this session status'}"
                                                 onclick="openSendModal(this)">
                                             <i class="bi bi-send me-1"></i>Send
                                         </button>
@@ -102,7 +104,7 @@
                                 <option th:each="agent : ${agents}"
                                         th:value="${agent.sessionId()}"
                                         th:disabled="${!agent.routable()}"
-                                        th:text="${agent.name() + ' (' + agent.model() + ')' + (agent.routable() ? '' : ' — resume first')}">Agent</option>
+                                        th:text="${agent.name() + ' (' + agent.model() + ')' + (agent.routable() ? '' : ' — unavailable')}">Agent</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -112,7 +114,7 @@
                                 <option th:each="agent : ${agents}"
                                         th:value="${agent.sessionId()}"
                                         th:disabled="${!agent.routable()}"
-                                        th:text="${agent.name() + ' (' + agent.model() + ')' + (agent.routable() ? '' : ' — resume first')}">Agent</option>
+                                        th:text="${agent.name() + ' (' + agent.model() + ')' + (agent.routable() ? '' : ' — unavailable')}">Agent</option>
                             </select>
                         </div>
                         <div class="mb-3">

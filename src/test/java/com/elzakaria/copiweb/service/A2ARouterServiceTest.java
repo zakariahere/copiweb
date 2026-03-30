@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class A2ARouterServiceTest {
 
     private final CopilotSessionRegistry registry = new CopilotSessionRegistry();
-    private final A2ARouterService service = new A2ARouterService(null, null, registry, null);
+    private final A2ARouterService service = new A2ARouterService(null, null, registry, null, null);
 
     @Test
     void toAgentCardMapsSessionFieldsCorrectly() {
@@ -39,9 +39,8 @@ class A2ARouterServiceTest {
         assertThat(card.agentName()).isEqualTo("custom-agent");
         assertThat(card.agentDisplayName()).isEqualTo("Custom Agent");
         assertThat(card.status()).isEqualTo(SessionStatus.ACTIVE);
-        // No active handle in registry, so only "chat" capability
-        assertThat(card.capabilities()).containsExactly("chat");
-        assertThat(card.routable()).isFalse();
+        assertThat(card.capabilities()).containsExactly("chat", "streaming", "tools");
+        assertThat(card.routable()).isTrue();
     }
 
     @Test
@@ -55,9 +54,9 @@ class A2ARouterServiceTest {
 
         AgentCardDto card = service.toAgentCard(session);
 
-        assertThat(card.capabilities()).containsExactly("chat");
+        assertThat(card.capabilities()).containsExactly("chat", "streaming", "tools");
         assertThat(card.status()).isEqualTo(SessionStatus.IDLE);
-        assertThat(card.routable()).isFalse();
+        assertThat(card.routable()).isTrue();
     }
 
     @Test

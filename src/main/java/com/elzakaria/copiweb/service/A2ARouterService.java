@@ -28,6 +28,7 @@ public class A2ARouterService {
     private final AgentSessionRepository sessionRepo;
     private final CopilotSessionRegistry registry;
     private final SseService sseService;
+    private final AgentSessionService agentSessionService;
 
     @Transactional(readOnly = true)
     public List<AgentCardDto> discoverAgents() {
@@ -113,34 +114,27 @@ public class A2ARouterService {
     }
 
     private void deliver(A2AMessage msg, AgentSession receiver) {
-        var handleOpt = registry.findByDbSessionId(receiver.getId());
+        try {
+            var handle = agentSessionService.ensureSessionHandle(receiver.getId());
 
-        if (handleOpt.isPresent()) {
-            var handle = handleOpt.get();
-            try {
-                receiver.setStatus(SessionStatus.ACTIVE);
-                sessionRepo.save(receiver);
+            receiver.setStatus(SessionStatus.ACTIVE);
+            sessionRepo.save(receiver);
 
-                handle.sdkSession().send(new MessageOptions().setPrompt(buildAgentPrompt(msg))).get();
+            handle.sdkSession().send(new MessageOptions().setPrompt(buildAgentPrompt(msg))).get();
 
-                msg.setStatus(A2AMessageStatus.DELIVERED);
-                msg.setDeliveredAt(LocalDateTime.now());
-                messageRepo.save(msg);
+            msg.setStatus(A2AMessageStatus.DELIVERED);
+            msg.setDeliveredAt(LocalDateTime.now());
+            messageRepo.save(msg);
 
-                sseService.broadcast(handle.sdkSessionId(),
-                        EventDto.a2aReceive(String.valueOf(msg.getSenderSession().getId()), msg.getPayload(), handle.sdkSessionId()));
-                log.info("A2A message delivered: {} -> {} (correlationId={})",
-                        msg.getSenderSession().getName(), receiver.getName(), msg.getCorrelationId());
-            } catch (Exception e) {
-                msg.setStatus(A2AMessageStatus.FAILED);
-                messageRepo.save(msg);
-                throw new IllegalStateException(
-                        "Failed to deliver A2A message to session " + receiver.getId() + ": " + e.getMessage(), e);
-            }
-        } else {
+            sseService.broadcast(handle.sdkSessionId(),
+                    EventDto.a2aReceive(String.valueOf(msg.getSenderSession().getId()), msg.getPayload(), handle.sdkSessionId()));
+            log.info("A2A message delivered: {} -> {} (correlationId={})",
+                    msg.getSenderSession().getName(), receiver.getName(), msg.getCorrelationId());
+        } catch (Exception e) {
             msg.setStatus(A2AMessageStatus.FAILED);
             messageRepo.save(msg);
-            log.warn("A2A delivery failed: receiver session {} not active in registry", receiver.getId());
+            throw new IllegalStateException(
+                    "Failed to deliver A2A message to session " + receiver.getId() + ": " + e.getMessage(), e);
         }
     }
 
@@ -176,8 +170,7 @@ public class A2ARouterService {
     }
 
     private boolean isRoutableSession(AgentSession session) {
-        return (session.getStatus() == SessionStatus.ACTIVE || session.getStatus() == SessionStatus.IDLE)
-                && registry.findByDbSessionId(session.getId()).isPresent();
+        return session.getStatus() == SessionStatus.ACTIVE || session.getStatus() == SessionStatus.IDLE;
     }
 
     private boolean isVisibleInHub(AgentSession session) {
@@ -220,9 +213,7 @@ public class A2ARouterService {
 
     AgentCardDto toAgentCard(AgentSession session) {
         boolean routable = isRoutableSession(session);
-        List<String> capabilities = registry.findByDbSessionId(session.getId())
-                .map(handle -> List.of("chat", "streaming", "tools"))
-                .orElse(List.of("chat"));
+        List<String> capabilities = routable ? List.of("chat", "streaming", "tools") : List.of("chat");
 
         return new AgentCardDto(
                 session.getId(),
