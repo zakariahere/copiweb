@@ -165,56 +165,55 @@
         </div>
     </div>
 
-</section>
-
-<script th:inline="javascript">
-    function refreshAgents() {
-        window.location.reload();
-    }
-
-    function openSendModal(button) {
-        const sessionId = button.getAttribute('data-session-id');
-        document.getElementById('receiverSelect').value = sessionId;
-        document.getElementById('msgPayload').focus();
-    }
-
-    function sendA2AMessage(event) {
-        event.preventDefault();
-        const senderId = document.getElementById('senderSelect').value;
-        const receiverId = document.getElementById('receiverSelect').value || null;
-        const msgType = document.getElementById('msgType').value;
-        const payload = document.getElementById('msgPayload').value;
-        const resultDiv = document.getElementById('sendResult');
-
-        if (!senderId) {
-            resultDiv.innerHTML = '<div class="alert alert-warning alert-sm py-1 small">Select a sender.</div>';
-            return;
+    <script th:inline="javascript">
+        function refreshAgents() {
+            window.location.reload();
         }
 
-        fetch('/api/a2a/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                senderSessionId: parseInt(senderId),
-                receiverSessionId: receiverId ? parseInt(receiverId) : null,
-                payload: payload,
-                messageType: msgType
+        function openSendModal(button) {
+            const sessionId = button.getAttribute('data-session-id');
+            document.getElementById('receiverSelect').value = sessionId;
+            document.getElementById('msgPayload').focus();
+        }
+
+        function sendA2AMessage(event) {
+            event.preventDefault();
+            const senderId = document.getElementById('senderSelect').value;
+            const receiverId = document.getElementById('receiverSelect').value || null;
+            const msgType = document.getElementById('msgType').value;
+            const payload = document.getElementById('msgPayload').value;
+            const resultDiv = document.getElementById('sendResult');
+
+            if (!senderId) {
+                resultDiv.innerHTML = '<div class="alert alert-warning alert-sm py-1 small">Select a sender.</div>';
+                return;
+            }
+
+            fetch('/api/a2a/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    senderSessionId: parseInt(senderId),
+                    receiverSessionId: receiverId ? parseInt(receiverId) : null,
+                    payload: payload,
+                    messageType: msgType
+                })
             })
-        })
-        .then(resp => {
-            if (!resp.ok) throw new Error('Send failed: ' + resp.status);
-            return resp.json();
-        })
-        .then(envelope => {
-            resultDiv.innerHTML = '<div class="alert alert-success alert-sm py-1 small">'
-                + '<i class="bi bi-check-circle me-1"></i>Message routed: ' + envelope.messageId + '</div>';
-            document.getElementById('msgPayload').value = '';
-            setTimeout(() => window.location.reload(), 1500);
-        })
-        .catch(err => {
-            resultDiv.innerHTML = '<div class="alert alert-danger alert-sm py-1 small">' + err.message + '</div>';
-        });
-    }
-</script>
+            .then(resp => {
+                if (!resp.ok) throw new Error('Send failed: ' + resp.status);
+                return resp.json();
+            })
+            .then(envelope => {
+                resultDiv.innerHTML = '<div class="alert alert-success alert-sm py-1 small">'
+                    + '<i class="bi bi-check-circle me-1"></i>Message routed: ' + envelope.messageId + '</div>';
+                document.getElementById('msgPayload').value = '';
+                setTimeout(() => window.location.reload(), 1500);
+            })
+            .catch(err => {
+                resultDiv.innerHTML = '<div class="alert alert-danger alert-sm py-1 small">' + err.message + '</div>';
+            });
+        }
+    </script>
+</section>
 </body>
 </html>
