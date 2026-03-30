@@ -45,4 +45,12 @@ public record EventDto(
     public static EventDto abort(String sessionId) {
         return new EventDto("ABORT", null, null, null, null, null, sessionId, System.currentTimeMillis());
     }
+
+    public static EventDto a2aSend(String targetSessionId, String payload, String sessionId) {
+        return new EventDto("A2A_SEND", payload, null, null, targetSessionId, null, sessionId, System.currentTimeMillis());
+    }
+
+    public static EventDto a2aReceive(String senderSessionId, String payload, String sessionId) {
+        return new EventDto("A2A_RECEIVE", payload, null, null, senderSessionId, null, sessionId, System.currentTimeMillis());
+    }
 }
