@@ -26,4 +26,6 @@ public interface AgentEventRepository extends JpaRepository<AgentEvent, Long> {
         LIMIT 10
         """)
     List<AgentEvent> findRecentEventsAcrossAllSessions(LocalDateTime since);
+
+    List<AgentEvent> findTop30BySessionAndSequenceGreaterThanOrderBySequenceAsc(AgentSession session, int sequence);
 }

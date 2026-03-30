@@ -44,6 +44,7 @@ public class SessionEventBridge {
 
         sdkSession.on(SessionIdleEvent.class, idle -> {
             sseService.broadcast(sdkId, EventDto.idle(sdkId));
+            persistEventAsync(dbId, handle, EventType.IDLE, "system", "Session became idle", null, null, null);
             updateSessionOnIdle(dbId);
         });
 
@@ -95,29 +96,30 @@ public class SessionEventBridge {
                                    EventType type, String role, String content,
                                    String toolName, String toolArgs, String toolResult) {
         try {
-            doPersistEvent(dbId, handle, type, role, content, toolName, toolArgs, toolResult);
+            persistEvent(dbId, handle, type, role, content, toolName, toolArgs, toolResult);
         } catch (Exception e) {
             log.error("Failed to persist event {} for session {}: {}", type, dbId, e.getMessage(), e);
         }
     }
 
     @Transactional
-    public void doPersistEvent(Long dbId, CopilotSessionHandle handle,
-                                EventType type, String role, String content,
-                                String toolName, String toolArgs, String toolResult) {
-        sessionRepo.findById(dbId).ifPresent(session -> {
-            var event = new AgentEvent();
-            event.setSession(session);
-            event.setEventType(type);
-            event.setRole(role);
-            event.setContent(content);
-            event.setToolName(toolName);
-            event.setToolArgs(toolArgs);
-            event.setToolResult(toolResult);
-            event.setOccurredAt(LocalDateTime.now());
-            event.setSequence(handle.nextSequence());
-            eventRepo.save(event);
-        });
+    public AgentEvent persistEvent(Long dbId, CopilotSessionHandle handle,
+                                   EventType type, String role, String content,
+                                   String toolName, String toolArgs, String toolResult) {
+        var session = sessionRepo.findById(dbId)
+                .orElseThrow(() -> new IllegalStateException("Session not found for event persistence: " + dbId));
+
+        var event = new AgentEvent();
+        event.setSession(session);
+        event.setEventType(type);
+        event.setRole(role);
+        event.setContent(content);
+        event.setToolName(toolName);
+        event.setToolArgs(toolArgs);
+        event.setToolResult(toolResult);
+        event.setOccurredAt(LocalDateTime.now());
+        event.setSequence(handle.nextSequence());
+        return eventRepo.save(event);
     }
 
     @Async

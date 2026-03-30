@@ -52,4 +52,10 @@ public class A2AMessage {
 
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
+
+    @Column(name = "sender_event_sequence")
+    private Integer senderEventSequence;
+
+    @Column(name = "receiver_event_sequence")
+    private Integer receiverEventSequence;
 }

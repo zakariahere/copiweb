@@ -1,13 +1,17 @@
 package com.elzakaria.copiweb.service;
 
 import com.elzakaria.copiweb.agent.CopilotSessionRegistry;
+import com.elzakaria.copiweb.agent.SessionEventBridge;
+import com.elzakaria.copiweb.dto.A2AActivitySummaryDto;
 import com.elzakaria.copiweb.dto.A2AEnvelopeDto;
 import com.elzakaria.copiweb.dto.A2ARoutingRequest;
+import com.elzakaria.copiweb.dto.A2AThreadDto;
 import com.elzakaria.copiweb.dto.AgentCardDto;
 import com.elzakaria.copiweb.dto.EventDto;
 import com.elzakaria.copiweb.model.*;
 import com.github.copilot.sdk.json.MessageOptions;
 import com.elzakaria.copiweb.repository.A2AMessageRepository;
+import com.elzakaria.copiweb.repository.AgentEventRepository;
 import com.elzakaria.copiweb.repository.AgentSessionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +36,8 @@ public class A2ARouterService {
     private final CopilotSessionRegistry registry;
     private final SseService sseService;
     private final AgentSessionService agentSessionService;
+    private final SessionEventBridge eventBridge;
+    private final AgentEventRepository eventRepo;
 
     @Transactional(readOnly = true)
     public List<AgentCardDto> discoverAgents() {
@@ -64,6 +73,8 @@ public class A2ARouterService {
         msg.setPayload(req.payload());
         msg.setStatus(A2AMessageStatus.PENDING);
         msg = messageRepo.save(msg);
+
+        persistSendReceipt(sender, msg);
 
         broadcastSend(sender, receiver, msg);
 
@@ -109,6 +120,24 @@ public class A2ARouterService {
                 .stream().map(this::toEnvelope).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<A2AThreadDto> getRecentThreads(int limit) {
+        var messages = messageRepo.findRecent(Math.max(limit * 8, 40)).stream()
+                .sorted(Comparator.comparing(A2AMessage::getCreatedAt))
+                .toList();
+
+        var byCorrelation = new LinkedHashMap<String, List<A2AMessage>>();
+        for (var message : messages) {
+            byCorrelation.computeIfAbsent(message.getCorrelationId(), ignored -> new ArrayList<>()).add(message);
+        }
+
+        return byCorrelation.values().stream()
+                .sorted(Comparator.comparing(this::threadUpdatedAt).reversed())
+                .limit(limit)
+                .map(this::toThread)
+                .toList();
+    }
+
     public long countPending() {
         return messageRepo.countByStatus(A2AMessageStatus.PENDING);
     }
@@ -119,6 +148,21 @@ public class A2ARouterService {
 
             receiver.setStatus(SessionStatus.ACTIVE);
             sessionRepo.save(receiver);
+
+            if (msg.getReceiverEventSequence() == null) {
+                var receiveEvent = eventBridge.persistEvent(
+                        receiver.getId(),
+                        handle,
+                        EventType.A2A_RECEIVE,
+                        "system",
+                        buildReceiveEventContent(msg),
+                        null,
+                        null,
+                        null
+                );
+                msg.setReceiverEventSequence(receiveEvent.getSequence());
+                messageRepo.save(msg);
+            }
 
             handle.sdkSession().send(new MessageOptions().setPrompt(buildAgentPrompt(msg))).get();
 
@@ -177,6 +221,153 @@ public class A2ARouterService {
         return session.getStatus() != SessionStatus.CLOSED;
     }
 
+    private void persistSendReceipt(AgentSession sender, A2AMessage msg) {
+        try {
+            var handle = agentSessionService.ensureSessionHandle(sender.getId());
+            var sendEvent = eventBridge.persistEvent(
+                    sender.getId(),
+                    handle,
+                    EventType.A2A_SEND,
+                    "system",
+                    buildSendEventContent(msg),
+                    null,
+                    null,
+                    null
+            );
+            msg.setSenderEventSequence(sendEvent.getSequence());
+            messageRepo.save(msg);
+        } catch (Exception e) {
+            log.debug("Unable to persist A2A send receipt for session {}: {}", sender.getId(), e.getMessage());
+        }
+    }
+
+    private A2AThreadDto toThread(List<A2AMessage> messages) {
+        var first = messages.getFirst();
+        var latest = messages.getLast();
+        int delivered = (int) messages.stream().filter(msg -> msg.getStatus() == A2AMessageStatus.DELIVERED).count();
+        int failed = (int) messages.stream().filter(msg -> msg.getStatus() == A2AMessageStatus.FAILED).count();
+        int pending = (int) messages.stream().filter(msg -> msg.getStatus() == A2AMessageStatus.PENDING).count();
+
+        return new A2AThreadDto(
+                first.getCorrelationId(),
+                first.getSenderSession().getId(),
+                first.getSenderSession().getName(),
+                latest.getReceiverSession() != null ? latest.getReceiverSession().getId() : null,
+                latest.getReceiverSession() != null ? latest.getReceiverSession().getName() : null,
+                messages.size(),
+                delivered,
+                failed,
+                pending,
+                first.getCreatedAt(),
+                threadUpdatedAt(messages),
+                messages.stream().map(this::toEnvelope).toList(),
+                summarizeReceiverActivity(messages)
+        );
+    }
+
+    private LocalDateTime threadUpdatedAt(List<A2AMessage> messages) {
+        return messages.getLast().getDeliveredAt() != null ? messages.getLast().getDeliveredAt() : messages.getLast().getCreatedAt();
+    }
+
+    private A2AActivitySummaryDto summarizeReceiverActivity(List<A2AMessage> messages) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            var msg = messages.get(i);
+            if (msg.getReceiverSession() == null || msg.getReceiverEventSequence() == null) {
+                continue;
+            }
+
+            var events = eventRepo.findTop30BySessionAndSequenceGreaterThanOrderBySequenceAsc(
+                    msg.getReceiverSession(), msg.getReceiverEventSequence());
+            if (events.isEmpty()) {
+                return new A2AActivitySummaryDto(
+                        msg.getReceiverSession().getId(),
+                        msg.getReceiverSession().getName(),
+                        msg.getStatus().name(),
+                        null,
+                        List.of(),
+                        null,
+                        msg.getDeliveredAt()
+                );
+            }
+
+            var tools = new ArrayList<String>();
+            String assistantSummary = null;
+            String errorSummary = null;
+            String processingState = "RUNNING";
+            LocalDateTime lastActivityAt = msg.getDeliveredAt();
+
+            for (var event : events) {
+                if (event.getEventType() == EventType.USER_MSG || event.getEventType() == EventType.A2A_RECEIVE) {
+                    break;
+                }
+
+                lastActivityAt = event.getOccurredAt();
+
+                switch (event.getEventType()) {
+                    case TOOL_START -> {
+                        var label = event.getToolName() != null ? event.getToolName() : "tool";
+                        if (!tools.contains(label) && tools.size() < 4) {
+                            tools.add(label);
+                        }
+                    }
+                    case TOOL_COMPLETE -> {
+                        var label = event.getToolName() != null ? event.getToolName() : "tool";
+                        if (!tools.contains(label) && tools.size() < 4) {
+                            tools.add(label);
+                        }
+                    }
+                    case ASSISTANT_MSG -> {
+                        if (assistantSummary == null && event.getContent() != null && !event.getContent().isBlank()) {
+                            assistantSummary = abbreviate(event.getContent(), 200);
+                        }
+                    }
+                    case SESSION_ERROR -> {
+                        errorSummary = abbreviate(event.getContent(), 160);
+                        processingState = "FAILED";
+                    }
+                    case IDLE -> {
+                        if (!"FAILED".equals(processingState)) {
+                            processingState = "COMPLETED";
+                        }
+                    }
+                    default -> {
+                    }
+                }
+            }
+
+            return new A2AActivitySummaryDto(
+                    msg.getReceiverSession().getId(),
+                    msg.getReceiverSession().getName(),
+                    processingState,
+                    assistantSummary,
+                    tools,
+                    errorSummary,
+                    lastActivityAt
+            );
+        }
+
+        return null;
+    }
+
+    private String buildSendEventContent(A2AMessage msg) {
+        return "A2A send [" + msg.getCorrelationId() + "] to "
+                + (msg.getReceiverSession() != null ? msg.getReceiverSession().getName() : "ALL")
+                + ": " + abbreviate(msg.getPayload(), 180);
+    }
+
+    private String buildReceiveEventContent(A2AMessage msg) {
+        return "A2A receive [" + msg.getCorrelationId() + "] from "
+                + msg.getSenderSession().getName()
+                + ": " + abbreviate(msg.getPayload(), 180);
+    }
+
+    private String abbreviate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, Math.max(0, maxLength - 1)) + "…";
+    }
+
     String buildAgentPrompt(A2AMessage msg) {
         var sender = msg.getSenderSession();
         var receiver = msg.getReceiverSession();
@@ -190,6 +381,9 @@ public class A2ARouterService {
 
                 Payload:
                 %s
+
+                If you use tools or produce results, keep your response grounded in this correlation ID so the
+                A2A dashboard can summarize the exchange coherently.
                 """.formatted(
                 msg.getMessageType().name(),
                 sender.getName(),

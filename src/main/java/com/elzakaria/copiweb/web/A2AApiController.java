@@ -2,6 +2,7 @@ package com.elzakaria.copiweb.web;
 
 import com.elzakaria.copiweb.dto.A2AEnvelopeDto;
 import com.elzakaria.copiweb.dto.A2ARoutingRequest;
+import com.elzakaria.copiweb.dto.A2AThreadDto;
 import com.elzakaria.copiweb.dto.AgentCardDto;
 import com.elzakaria.copiweb.service.A2ARouterService;
 import jakarta.validation.Valid;
@@ -54,5 +55,10 @@ public class A2AApiController {
     @GetMapping("/messages/recent")
     public List<A2AEnvelopeDto> getRecentMessages(@RequestParam(defaultValue = "50") int limit) {
         return routerService.getRecentMessages(limit);
+    }
+
+    @GetMapping("/threads/recent")
+    public List<A2AThreadDto> getRecentThreads(@RequestParam(defaultValue = "8") int limit) {
+        return routerService.getRecentThreads(limit);
     }
 }

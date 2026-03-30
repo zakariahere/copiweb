@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class A2ARouterServiceTest {
 
     private final CopilotSessionRegistry registry = new CopilotSessionRegistry();
-    private final A2ARouterService service = new A2ARouterService(null, null, registry, null, null);
+    private final A2ARouterService service = new A2ARouterService(null, null, registry, null, null, null, null);
 
     @Test
     void toAgentCardMapsSessionFieldsCorrectly() {

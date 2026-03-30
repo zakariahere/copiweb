@@ -183,6 +183,111 @@
         </div>
     </div>
 
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-diagram-2 me-2"></i>Conversation Threads</span>
+                    <span class="badge bg-secondary" th:text="${threads.size()}">0</span>
+                </div>
+                <div class="card-body">
+                    <div th:if="${threads.isEmpty()}" class="text-secondary text-center py-4">
+                        <p class="mb-0">No A2A threads yet.</p>
+                    </div>
+                    <div class="accordion" id="threadAccordion" th:unless="${threads.isEmpty()}">
+                        <div class="accordion-item bg-dark border-secondary mb-2" th:each="thread, stat : ${threads}">
+                            <h2 class="accordion-header" th:attr="id=${'threadHeading-' + stat.index}">
+                                <button class="accordion-button collapsed bg-dark text-light shadow-none"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        th:attr="data-bs-target=${'#threadCollapse-' + stat.index},aria-controls=${'threadCollapse-' + stat.index}">
+                                    <div class="w-100 d-flex flex-column gap-2">
+                                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <span class="badge bg-primary" th:text="${#strings.abbreviate(thread.correlationId(), 18)}">corr</span>
+                                                <strong th:text="${thread.senderName()}">sender</strong>
+                                                <span class="text-secondary">→</span>
+                                                <span class="text-secondary" th:text="${thread.receiverName() != null ? thread.receiverName() : 'Broadcast'}">receiver</span>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <span class="badge bg-success" th:text="${thread.deliveredCount()} + ' delivered'">0 delivered</span>
+                                                <span class="badge bg-warning text-dark" th:if="${thread.pendingCount() > 0}"
+                                                      th:text="${thread.pendingCount()} + ' pending'">0 pending</span>
+                                                <span class="badge bg-danger" th:if="${thread.failedCount() > 0}"
+                                                      th:text="${thread.failedCount()} + ' failed'">0 failed</span>
+                                            </div>
+                                        </div>
+                                        <div class="small text-secondary d-flex flex-wrap gap-3">
+                                            <span th:text="${thread.messageCount()} + ' message(s)'">0 messages</span>
+                                            <span th:text="${'Started ' + #temporals.format(thread.startedAt(), 'MMM dd HH:mm:ss')}">Started</span>
+                                            <span th:text="${'Updated ' + #temporals.format(thread.updatedAt(), 'MMM dd HH:mm:ss')}">Updated</span>
+                                        </div>
+                                        <div th:if="${thread.activitySummary() != null}" class="small d-flex flex-column gap-1">
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <span class="badge"
+                                                      th:classappend="${thread.activitySummary().processingState() == 'COMPLETED'} ? 'bg-success' :
+                                                                      (${thread.activitySummary().processingState() == 'FAILED'} ? 'bg-danger' : 'bg-warning text-dark')"
+                                                      th:text="${thread.activitySummary().processingState()}">RUNNING</span>
+                                                <span class="text-secondary">
+                                                    Receiver activity:
+                                                    <span class="text-light" th:text="${thread.activitySummary().receiverName()}">receiver</span>
+                                                </span>
+                                            </div>
+                                            <div class="text-secondary" th:if="${thread.activitySummary().assistantSummary() != null}"
+                                                 th:text="${thread.activitySummary().assistantSummary()}">assistant summary</div>
+                                            <div class="d-flex flex-wrap gap-1" th:if="${!thread.activitySummary().toolSummaries().isEmpty()}">
+                                                <span class="badge bg-secondary"
+                                                      th:each="tool : ${thread.activitySummary().toolSummaries()}"
+                                                      th:text="${tool}">tool</span>
+                                            </div>
+                                            <div class="text-danger" th:if="${thread.activitySummary().errorSummary() != null}"
+                                                 th:text="${thread.activitySummary().errorSummary()}">error</div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div class="accordion-collapse collapse"
+                                 th:attr="id=${'threadCollapse-' + stat.index},aria-labelledby=${'threadHeading-' + stat.index}"
+                                 data-bs-parent="#threadAccordion">
+                                <div class="accordion-body">
+                                    <div class="list-group list-group-flush">
+                                        <div class="list-group-item bg-dark border-secondary px-0"
+                                             th:each="msg : ${thread.messages()}">
+                                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+                                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                                    <span class="badge"
+                                                          th:classappend="${msg.messageType() == 'BROADCAST'} ? 'bg-info' :
+                                                                          (${msg.messageType() == 'TASK_REQUEST'} ? 'bg-primary' :
+                                                                          (${msg.messageType() == 'TASK_RESPONSE'} ? 'bg-success' : 'bg-secondary'))"
+                                                          th:text="${msg.messageType()}">TYPE</span>
+                                                    <span class="text-light" th:text="${msg.senderName()}">sender</span>
+                                                    <span class="text-secondary">→</span>
+                                                    <span class="text-secondary" th:text="${msg.receiverName() != null ? msg.receiverName() : 'ALL'}">receiver</span>
+                                                </div>
+                                                <div class="d-flex flex-wrap align-items-center gap-2 small">
+                                                    <span class="badge"
+                                                          th:classappend="${msg.status() == 'DELIVERED'} ? 'bg-success' :
+                                                                          (${msg.status() == 'FAILED'} ? 'bg-danger' : 'bg-warning text-dark')"
+                                                          th:text="${msg.status()}">STATUS</span>
+                                                    <span class="text-secondary"
+                                                          th:text="${#temporals.format(msg.createdAt(), 'MMM dd HH:mm:ss')}">created</span>
+                                                    <span class="text-secondary" th:if="${msg.deliveredAt() != null}"
+                                                          th:text="${'receipt ' + #temporals.format(msg.deliveredAt(), 'HH:mm:ss')}">receipt</span>
+                                                </div>
+                                            </div>
+                                            <div class="small text-light" style="white-space:pre-wrap;"
+                                                 th:text="${msg.payload()}">payload</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script th:inline="javascript">
         function refreshAgents() {
             window.location.reload();

@@ -23,6 +23,7 @@ public class A2AController {
         model.addAttribute("agents", agents);
         model.addAttribute("routableAgentCount", routableAgentCount);
         model.addAttribute("recentMessages", routerService.getRecentMessages(20));
+        model.addAttribute("threads", routerService.getRecentThreads(8));
         model.addAttribute("pendingCount", routerService.countPending());
         return "a2a/hub";
     }
