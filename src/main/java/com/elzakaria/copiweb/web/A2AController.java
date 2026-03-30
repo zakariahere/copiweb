@@ -18,7 +18,10 @@ public class A2AController {
 
     @GetMapping
     public String hub(Model model) {
-        model.addAttribute("agents", routerService.discoverAgents());
+        var agents = routerService.discoverAgents();
+        long routableAgentCount = agents.stream().filter(agent -> agent.routable()).count();
+        model.addAttribute("agents", agents);
+        model.addAttribute("routableAgentCount", routableAgentCount);
         model.addAttribute("recentMessages", routerService.getRecentMessages(20));
         model.addAttribute("pendingCount", routerService.countPending());
         return "a2a/hub";

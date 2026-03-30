@@ -6,6 +6,7 @@ import com.elzakaria.copiweb.dto.A2ARoutingRequest;
 import com.elzakaria.copiweb.dto.AgentCardDto;
 import com.elzakaria.copiweb.dto.EventDto;
 import com.elzakaria.copiweb.model.*;
+import com.github.copilot.sdk.json.MessageOptions;
 import com.elzakaria.copiweb.repository.A2AMessageRepository;
 import com.elzakaria.copiweb.repository.AgentSessionRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,10 +28,12 @@ public class A2ARouterService {
     private final AgentSessionRepository sessionRepo;
     private final CopilotSessionRegistry registry;
     private final SseService sseService;
+    private final AgentSessionService agentSessionService;
 
+    @Transactional(readOnly = true)
     public List<AgentCardDto> discoverAgents() {
         return sessionRepo.findAllByOrderByLastActiveAtDesc().stream()
-                .filter(s -> s.getStatus() == SessionStatus.ACTIVE || s.getStatus() == SessionStatus.IDLE)
+                .filter(this::isVisibleInHub)
                 .map(this::toAgentCard)
                 .toList();
     }
@@ -86,6 +89,7 @@ public class A2ARouterService {
         return toEnvelope(msg);
     }
 
+    @Transactional(readOnly = true)
     public List<A2AEnvelopeDto> getPendingMessages(Long sessionId) {
         var session = sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new EntityNotFoundException("Session not found: " + sessionId));
@@ -93,11 +97,13 @@ public class A2ARouterService {
                 .stream().map(this::toEnvelope).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<A2AEnvelopeDto> getConversation(String correlationId) {
         return messageRepo.findByCorrelationIdOrderByCreatedAtAsc(correlationId)
                 .stream().map(this::toEnvelope).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<A2AEnvelopeDto> getRecentMessages(int limit) {
         return messageRepo.findRecent(limit)
                 .stream().map(this::toEnvelope).toList();
@@ -108,10 +114,14 @@ public class A2ARouterService {
     }
 
     private void deliver(A2AMessage msg, AgentSession receiver) {
-        var handleOpt = registry.findByDbSessionId(receiver.getId());
+        try {
+            var handle = agentSessionService.ensureSessionHandle(receiver.getId());
 
-        if (handleOpt.isPresent()) {
-            var handle = handleOpt.get();
+            receiver.setStatus(SessionStatus.ACTIVE);
+            sessionRepo.save(receiver);
+
+            handle.sdkSession().send(new MessageOptions().setPrompt(buildAgentPrompt(msg))).get();
+
             msg.setStatus(A2AMessageStatus.DELIVERED);
             msg.setDeliveredAt(LocalDateTime.now());
             messageRepo.save(msg);
@@ -120,10 +130,11 @@ public class A2ARouterService {
                     EventDto.a2aReceive(String.valueOf(msg.getSenderSession().getId()), msg.getPayload(), handle.sdkSessionId()));
             log.info("A2A message delivered: {} -> {} (correlationId={})",
                     msg.getSenderSession().getName(), receiver.getName(), msg.getCorrelationId());
-        } else {
+        } catch (Exception e) {
             msg.setStatus(A2AMessageStatus.FAILED);
             messageRepo.save(msg);
-            log.warn("A2A delivery failed: receiver session {} not active in registry", receiver.getId());
+            throw new IllegalStateException(
+                    "Failed to deliver A2A message to session " + receiver.getId() + ": " + e.getMessage(), e);
         }
     }
 
@@ -138,7 +149,7 @@ public class A2ARouterService {
     private void broadcastToAll(AgentSession sender, A2AMessage msg) {
         var activeSessions = sessionRepo.findAllByOrderByLastActiveAtDesc().stream()
                 .filter(s -> !s.getId().equals(sender.getId()))
-                .filter(s -> s.getStatus() == SessionStatus.ACTIVE || s.getStatus() == SessionStatus.IDLE)
+                .filter(this::isRoutableSession)
                 .toList();
 
         for (var target : activeSessions) {
@@ -158,6 +169,37 @@ public class A2ARouterService {
         log.info("A2A broadcast from '{}' delivered to {} sessions", sender.getName(), activeSessions.size());
     }
 
+    private boolean isRoutableSession(AgentSession session) {
+        return session.getStatus() == SessionStatus.ACTIVE || session.getStatus() == SessionStatus.IDLE;
+    }
+
+    private boolean isVisibleInHub(AgentSession session) {
+        return session.getStatus() != SessionStatus.CLOSED;
+    }
+
+    String buildAgentPrompt(A2AMessage msg) {
+        var sender = msg.getSenderSession();
+        var receiver = msg.getReceiverSession();
+        return """
+                You received an A2A message from another CoPiWeb session.
+
+                Type: %s
+                From: %s (dbSessionId=%d)
+                To: %s
+                Correlation ID: %s
+
+                Payload:
+                %s
+                """.formatted(
+                msg.getMessageType().name(),
+                sender.getName(),
+                sender.getId(),
+                receiver != null ? receiver.getName() + " (dbSessionId=" + receiver.getId() + ")" : "ALL",
+                msg.getCorrelationId(),
+                msg.getPayload()
+        );
+    }
+
     private A2AMessageType resolveMessageType(String requested, AgentSession receiver) {
         if (requested != null) {
             try {
@@ -170,9 +212,8 @@ public class A2ARouterService {
     }
 
     AgentCardDto toAgentCard(AgentSession session) {
-        List<String> capabilities = registry.findByDbSessionId(session.getId())
-                .map(handle -> List.of("chat", "streaming", "tools"))
-                .orElse(List.of("chat"));
+        boolean routable = isRoutableSession(session);
+        List<String> capabilities = routable ? List.of("chat", "streaming", "tools") : List.of("chat");
 
         return new AgentCardDto(
                 session.getId(),
@@ -182,7 +223,8 @@ public class A2ARouterService {
                 session.getSelectedAgentName(),
                 session.getSelectedAgentDisplayName(),
                 session.getStatus(),
-                capabilities
+                capabilities,
+                routable
         );
     }
 

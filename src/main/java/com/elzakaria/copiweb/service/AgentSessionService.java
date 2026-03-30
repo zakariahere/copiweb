@@ -9,6 +9,7 @@ import com.elzakaria.copiweb.model.AgentEvent;
 import com.elzakaria.copiweb.model.AgentSession;
 import com.elzakaria.copiweb.model.EventType;
 import com.elzakaria.copiweb.model.SessionStatus;
+import com.elzakaria.copiweb.repository.A2AMessageRepository;
 import com.elzakaria.copiweb.repository.AgentEventRepository;
 import com.elzakaria.copiweb.repository.AgentSessionRepository;
 import com.github.copilot.sdk.CopilotClient;
@@ -35,6 +36,7 @@ public class AgentSessionService {
     private final ModelService modelService;
     private final AgentSessionRepository sessionRepo;
     private final AgentEventRepository eventRepo;
+    private final A2AMessageRepository a2aMessageRepo;
     private final CopilotSessionRegistry registry;
     private final SessionEventBridge eventBridge;
     private final SseService sseService;
@@ -47,6 +49,7 @@ public class AgentSessionService {
         var status = copilotClient.getStatus().get();
         log.info("CopilotClient started. CLI version: {}", status.getVersion());
         modelService.refreshModels();
+        restorePersistedSessions();
     }
 
     public AgentSession createSession(CreateSessionRequest req) throws Exception {
@@ -92,16 +95,25 @@ public class AgentSessionService {
 
     @Transactional
     public AgentSession resumeSession(Long dbId) throws Exception {
+        var existingHandle = registry.findByDbSessionId(dbId);
+        if (existingHandle.isPresent()) {
+            return sessionRepo.findById(dbId)
+                    .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
+        }
+
         var dbSession = sessionRepo.findById(dbId)
                 .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
+        var previousStatus = dbSession.getStatus();
 
         var sdkSession = copilotClient.resumeSession(
                 dbSession.getSessionId(),
-                new ResumeSessionConfig().setModel(dbSession.getModel())
+                new ResumeSessionConfig()
+                        .setModel(dbSession.getModel())
+                        .setOnPermissionRequest(PermissionHandler.APPROVE_ALL)
         ).get();
 
         updateSelectedAgent(dbSession, getCurrentAgent(sdkSession, dbSession.getSessionId()));
-        dbSession.setStatus(SessionStatus.ACTIVE);
+        dbSession.setStatus(previousStatus == SessionStatus.IDLE ? SessionStatus.IDLE : SessionStatus.ACTIVE);
         dbSession = sessionRepo.save(dbSession);
 
         int nextSeq = eventRepo.findBySessionOrderBySequenceAsc(dbSession)
@@ -115,12 +127,22 @@ public class AgentSessionService {
         return dbSession;
     }
 
+    public CopilotSessionHandle ensureSessionHandle(Long dbId) throws Exception {
+        var existingHandle = registry.findByDbSessionId(dbId);
+        if (existingHandle.isPresent()) {
+            return existingHandle.get();
+        }
+
+        resumeSession(dbId);
+        return registry.findByDbSessionId(dbId)
+                .orElseThrow(() -> new IllegalStateException("Session not active in registry: " + dbId));
+    }
+
     public void sendMessage(Long dbId, SendMessageRequest req) throws Exception {
         var dbSession = sessionRepo.findById(dbId)
                 .orElseThrow(() -> new EntityNotFoundException("Session not found: " + dbId));
 
-        var handle = registry.findByDbSessionId(dbId)
-                .orElseThrow(() -> new IllegalStateException("Session not active in registry: " + dbId));
+        var handle = ensureSessionHandle(dbId);
 
         // Persist user message
         eventBridge.persistEventAsync(dbId, handle, EventType.USER_MSG, "user", req.message(), null, null, null);
@@ -158,8 +180,12 @@ public class AgentSessionService {
         registry.remove(sdkSessionId);
         sseService.removeAll(sdkSessionId);
 
+        long deletedA2AMessages = a2aMessageRepo.deleteBySenderSessionOrReceiverSession(dbSession, dbSession);
+        a2aMessageRepo.flush();
+
         sessionRepo.delete(dbSession);
         sessionRepo.flush();
+        log.info("Deleted {} A2A message(s) linked to session {}", deletedA2AMessages, dbId);
         log.info("Deleted session dbId={} sdkId={}", dbId, sdkSessionId);
     }
 
@@ -221,5 +247,22 @@ public class AgentSessionService {
                         ? selectedAgent.getDisplayName()
                         : selectedAgent.getName()
         );
+    }
+
+    private void restorePersistedSessions() {
+        var resumableSessions = sessionRepo.findAllByOrderByLastActiveAtDesc().stream()
+                .filter(session -> session.getStatus() == SessionStatus.ACTIVE || session.getStatus() == SessionStatus.IDLE)
+                .toList();
+
+        for (var session : resumableSessions) {
+            try {
+                ensureSessionHandle(session.getId());
+            } catch (Exception e) {
+                log.warn("Failed to restore session {} (sdkId={}): {}",
+                        session.getId(), session.getSessionId(), e.getMessage());
+            }
+        }
+
+        log.info("Restored {} persisted session(s) into the runtime registry", registry.all().size());
     }
 }
