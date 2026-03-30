@@ -12,5 +12,6 @@ public record AgentCardDto(
     String agentName,
     String agentDisplayName,
     SessionStatus status,
-    List<String> capabilities
+    List<String> capabilities,
+    boolean routable
 ) {}
