@@ -30,26 +30,26 @@ public class A2ARouterService {
 
     public List<AgentCardDto> discoverAgents() {
         return sessionRepo.findAllByOrderByLastActiveAtDesc().stream()
-            .filter(s -> s.getStatus() == SessionStatus.ACTIVE || s.getStatus() == SessionStatus.IDLE)
-            .map(this::toAgentCard)
-            .toList();
+                .filter(s -> s.getStatus() == SessionStatus.ACTIVE || s.getStatus() == SessionStatus.IDLE)
+                .map(this::toAgentCard)
+                .toList();
     }
 
     public AgentCardDto getAgentCard(Long sessionId) {
         var session = sessionRepo.findById(sessionId)
-            .orElseThrow(() -> new EntityNotFoundException("Session not found: " + sessionId));
+                .orElseThrow(() -> new EntityNotFoundException("Session not found: " + sessionId));
         return toAgentCard(session);
     }
 
     @Transactional
     public A2AEnvelopeDto send(A2ARoutingRequest req) {
         var sender = sessionRepo.findById(req.senderSessionId())
-            .orElseThrow(() -> new EntityNotFoundException("Sender session not found: " + req.senderSessionId()));
+                .orElseThrow(() -> new EntityNotFoundException("Sender session not found: " + req.senderSessionId()));
 
         AgentSession receiver = null;
         if (req.receiverSessionId() != null) {
             receiver = sessionRepo.findById(req.receiverSessionId())
-                .orElseThrow(() -> new EntityNotFoundException("Receiver session not found: " + req.receiverSessionId()));
+                    .orElseThrow(() -> new EntityNotFoundException("Receiver session not found: " + req.receiverSessionId()));
         }
 
         var msg = new A2AMessage();
@@ -76,7 +76,7 @@ public class A2ARouterService {
     @Transactional
     public A2AEnvelopeDto deliver(Long messageId) {
         var msg = messageRepo.findById(messageId)
-            .orElseThrow(() -> new EntityNotFoundException("A2A message not found: " + messageId));
+                .orElseThrow(() -> new EntityNotFoundException("A2A message not found: " + messageId));
 
         if (msg.getReceiverSession() == null) {
             throw new IllegalStateException("Cannot deliver a broadcast message by id");
@@ -88,22 +88,22 @@ public class A2ARouterService {
 
     public List<A2AEnvelopeDto> getPendingMessages(Long sessionId) {
         var session = sessionRepo.findById(sessionId)
-            .orElseThrow(() -> new EntityNotFoundException("Session not found: " + sessionId));
+                .orElseThrow(() -> new EntityNotFoundException("Session not found: " + sessionId));
         return messageRepo.findByReceiverSessionAndStatusOrderByCreatedAtAsc(session, A2AMessageStatus.PENDING)
-            .stream().map(this::toEnvelope).toList();
+                .stream().map(this::toEnvelope).toList();
     }
 
     public List<A2AEnvelopeDto> getConversation(String correlationId) {
         return messageRepo.findByCorrelationIdOrderByCreatedAtAsc(correlationId)
-            .stream().map(this::toEnvelope).toList();
+                .stream().map(this::toEnvelope).toList();
     }
 
     public List<A2AEnvelopeDto> getRecentMessages(int limit) {
         return messageRepo.findRecent(limit)
-            .stream().map(this::toEnvelope).toList();
+                .stream().map(this::toEnvelope).toList();
     }
 
-    long countPending() {
+    public long countPending() {
         return messageRepo.countByStatus(A2AMessageStatus.PENDING);
     }
 
@@ -117,9 +117,9 @@ public class A2ARouterService {
             messageRepo.save(msg);
 
             sseService.broadcast(handle.sdkSessionId(),
-                EventDto.a2aReceive(String.valueOf(msg.getSenderSession().getId()), msg.getPayload(), handle.sdkSessionId()));
+                    EventDto.a2aReceive(String.valueOf(msg.getSenderSession().getId()), msg.getPayload(), handle.sdkSessionId()));
             log.info("A2A message delivered: {} -> {} (correlationId={})",
-                msg.getSenderSession().getName(), receiver.getName(), msg.getCorrelationId());
+                    msg.getSenderSession().getName(), receiver.getName(), msg.getCorrelationId());
         } else {
             msg.setStatus(A2AMessageStatus.FAILED);
             messageRepo.save(msg);
@@ -131,15 +131,15 @@ public class A2ARouterService {
         registry.findByDbSessionId(sender.getId()).ifPresent(handle -> {
             String targetId = receiver != null ? String.valueOf(receiver.getId()) : "ALL";
             sseService.broadcast(handle.sdkSessionId(),
-                EventDto.a2aSend(targetId, msg.getPayload(), handle.sdkSessionId()));
+                    EventDto.a2aSend(targetId, msg.getPayload(), handle.sdkSessionId()));
         });
     }
 
     private void broadcastToAll(AgentSession sender, A2AMessage msg) {
         var activeSessions = sessionRepo.findAllByOrderByLastActiveAtDesc().stream()
-            .filter(s -> !s.getId().equals(sender.getId()))
-            .filter(s -> s.getStatus() == SessionStatus.ACTIVE || s.getStatus() == SessionStatus.IDLE)
-            .toList();
+                .filter(s -> !s.getId().equals(sender.getId()))
+                .filter(s -> s.getStatus() == SessionStatus.ACTIVE || s.getStatus() == SessionStatus.IDLE)
+                .toList();
 
         for (var target : activeSessions) {
             var broadcastCopy = new A2AMessage();
@@ -171,34 +171,34 @@ public class A2ARouterService {
 
     AgentCardDto toAgentCard(AgentSession session) {
         List<String> capabilities = registry.findByDbSessionId(session.getId())
-            .map(handle -> List.of("chat", "streaming", "tools"))
-            .orElse(List.of("chat"));
+                .map(handle -> List.of("chat", "streaming", "tools"))
+                .orElse(List.of("chat"));
 
         return new AgentCardDto(
-            session.getId(),
-            session.getSessionId(),
-            session.getName(),
-            session.getModel(),
-            session.getSelectedAgentName(),
-            session.getSelectedAgentDisplayName(),
-            session.getStatus(),
-            capabilities
+                session.getId(),
+                session.getSessionId(),
+                session.getName(),
+                session.getModel(),
+                session.getSelectedAgentName(),
+                session.getSelectedAgentDisplayName(),
+                session.getStatus(),
+                capabilities
         );
     }
 
     A2AEnvelopeDto toEnvelope(A2AMessage msg) {
         return new A2AEnvelopeDto(
-            msg.getMessageId(),
-            msg.getCorrelationId(),
-            msg.getSenderSession().getId(),
-            msg.getSenderSession().getName(),
-            msg.getReceiverSession() != null ? msg.getReceiverSession().getId() : null,
-            msg.getReceiverSession() != null ? msg.getReceiverSession().getName() : null,
-            msg.getMessageType().name(),
-            msg.getPayload(),
-            msg.getStatus().name(),
-            msg.getCreatedAt(),
-            msg.getDeliveredAt()
+                msg.getMessageId(),
+                msg.getCorrelationId(),
+                msg.getSenderSession().getId(),
+                msg.getSenderSession().getName(),
+                msg.getReceiverSession() != null ? msg.getReceiverSession().getId() : null,
+                msg.getReceiverSession() != null ? msg.getReceiverSession().getName() : null,
+                msg.getMessageType().name(),
+                msg.getPayload(),
+                msg.getStatus().name(),
+                msg.getCreatedAt(),
+                msg.getDeliveredAt()
         );
     }
 }
